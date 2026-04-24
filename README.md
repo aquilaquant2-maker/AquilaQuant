@@ -1,11 +1,19 @@
-<div align="center">
+# AQUILA QUANT [V5.0 ELITE]
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+Plataforma de inteligência quantitativa para traders que transforma dados brutos de mercado em "mapas operacionais" baseados em desvios estatísticos e matemática institucional.
 
-  <h1>Built with AI Studio</h2>
+## 1. Mapeamento de Infraestrutura
+- **Frontend**: React 18+ (Vite) / Padrão Next.js App Router (Conceptual)
+- **TypeScript**: Strict Mode
+- **Styling**: Tailwind CSS v4 + Framer Motion
+- **Services**: Supabase (Planned Auth/RLS), Stripe (Billing), Gemini API (AI Insights)
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## 2. Leis Sênior de Codificação
+- **Idempotência de Estado**: UI feedback em toda ação de escrita.
+- **Atomicidade**: Operações complexas garantidas em camada única.
+- **Performance**: Foco em LCP e resposta tátil imediata.
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
-
-</div>
+## 3. Guia de Design
+- **Estética**: Ultra-dark trading terminal (#050507).
+- **Cores**: Trading Green (#00ff9d), Glass-card UI.
+- **Tipografia**: Inter (UI) & JetBrains Mono (Data).
