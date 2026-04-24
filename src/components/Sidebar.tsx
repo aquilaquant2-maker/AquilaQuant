@@ -17,21 +17,29 @@ import {
   BookOpen,
   Network,
   Shield,
-  MessageCircle
+  MessageCircle,
+  Loader2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { authService } from '../lib/authService';
+import { User } from '@supabase/supabase-js';
 
 export const Sidebar = ({ 
   onViewChange, 
   currentView,
-  onResetLanding
+  onResetLanding,
+  user,
+  isAdmin
 }: { 
   onViewChange: (view: string) => void, 
   currentView: string,
-  onResetLanding: () => void
+  onResetLanding: () => void,
+  user: User | null,
+  isAdmin: boolean
 }) => {
   const [selectedLang, setSelectedLang] = useState({ id: 'br', flag: 'br' });
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
     dashboards: currentView === 'DASHBOARD' || currentView === 'MINI_DOLAR' || currentView === 'MINI_INDICE' || currentView === 'XAU_USD' || currentView === 'EUR_USD',
     languages: false,
@@ -46,6 +54,28 @@ export const Sidebar = ({
   const toggleMenu = (menu: string) => {
     setExpandedMenus(prev => ({ ...prev, [menu]: !prev[menu] }));
   };
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await authService.signOut();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
+  const fullName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Trader';
 
   return (
     <div className="flex flex-col h-full w-72 bg-[#08080a] border-r border-white/5 py-8 px-6 relative z-10 overflow-y-auto scrollbar-hide">
@@ -383,37 +413,50 @@ export const Sidebar = ({
         </button>
 
         {/* Profile Card */}
-        <button 
-          onClick={() => onViewChange('PROFILE')}
+        <div 
           className={cn(
-            "glass-card rounded-2xl p-4 border group text-left w-full transition-all cursor-pointer",
+            "glass-card rounded-2xl p-4 border group text-left w-full transition-all relative overflow-hidden",
             currentView === 'PROFILE' ? "border-trading-green bg-white/5 shadow-[0_0_15px_rgba(0,255,157,0.05)]" : "border-white/10 bg-white/[0.02] hover:border-trading-green/30"
           )}
         >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div 
+              onClick={() => onViewChange('PROFILE')}
+              className="flex items-center gap-3 cursor-pointer flex-1"
+            >
               <div className="relative">
-                <img 
-                  src="https://picsum.photos/seed/raven/64" 
-                  alt="Raven Welch" 
-                  className="w-10 h-10 rounded-full border border-white/10 p-0.5"
-                  referrerPolicy="no-referrer"
-                />
+                {user?.user_metadata?.avatar_url ? (
+                  <img 
+                    src={user.user_metadata.avatar_url} 
+                    alt={fullName} 
+                    className="w-10 h-10 rounded-full border border-white/10 p-0.5 object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center bg-white/5 text-[10px] font-black text-trading-green">
+                    {getInitials(fullName)}
+                  </div>
+                )}
                 <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-trading-green border-2 border-[#08080a] rounded-full"></div>
               </div>
               <div className="flex flex-col">
-                <span className="text-sm font-bold tracking-tight text-white leading-none mb-1.5 focus:outline-none ring-0">Raven Welch</span>
+                <span className="text-sm font-bold tracking-tight text-white leading-none mb-1.5 truncate max-w-[120px]">{fullName}</span>
                 <div className="flex items-center gap-1.5">
                   <div className="w-1.5 h-1.5 bg-trading-green rounded-full shadow-[0_0_8px_rgba(0,255,157,0.4)]"></div>
-                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-tight">24 dias restantes</span>
+                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-tight">Assinatura Ativa</span>
                 </div>
               </div>
             </div>
-            <div className="p-2 text-zinc-500 hover:text-trading-red transition-all cursor-pointer" onClick={(e) => { e.stopPropagation(); /* handle logout */ }}>
-              <LogOut className="w-4 h-4" />
-            </div>
+            <button 
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="p-2 text-zinc-500 hover:text-trading-red transition-all cursor-pointer disabled:opacity-50"
+              title="Sair"
+            >
+              {isLoggingOut ? <Loader2 size={16} className="animate-spin" /> : <LogOut className="w-4 h-4" />}
+            </button>
           </div>
-        </button>
+        </div>
       </div>
     </div>
   );

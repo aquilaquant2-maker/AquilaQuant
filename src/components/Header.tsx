@@ -1,15 +1,17 @@
 import React from 'react';
 import { Search, Bell, Mail, ChevronDown } from 'lucide-react';
+import { User } from '@supabase/supabase-js';
 
-export const Header = ({ currentView }: { currentView?: string }) => {
+export const Header = ({ currentView, user }: { currentView?: string, user: User | null }) => {
   const isDashboard = currentView === 'DASHBOARD';
+  const fullName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Trader';
   
   const getHeaderInfo = () => {
     if (currentView?.startsWith('ADMIN')) {
       return { title: 'Área do Administrador', desc: 'Gerenciamento de sistema, usuários e dados' };
     }
     switch (currentView) {
-      case 'PROFILE': return { title: 'Perfil do Usuário', desc: 'Visualizando perfil de Raven Welch' };
+      case 'PROFILE': return { title: 'Perfil do Usuário', desc: `Visualizando perfil de ${fullName}` };
       case 'SUPPORT': return { title: 'Ajuda & Suporte', desc: 'Central de atendimento ao cliente' };
       case 'MINI_DOLAR': return { title: 'MINI DÓLAR', desc: 'Cálculo de regiões e performance quantitativa' };
       case 'MINI_INDICE': return { title: 'MINI ÍNDICE', desc: 'Cálculo de regiões e performance quantitativa' };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { MarketCard } from './components/MarketCard';
@@ -15,7 +15,10 @@ import { TradingDashboard } from './components/TradingDashboard';
 import { LandingPage } from './components/LandingPage';
 import { AdminView } from './components/AdminView';
 import { HomeDashboardWidgets } from './components/HomeDashboardWidgets';
-import { Bitcoin, Cpu, Zap, ChevronDown, Shield, Lock } from 'lucide-react';
+import { AuthModal } from './components/AuthModal';
+import { Bitcoin, Cpu, Zap, ChevronDown, Shield, Lock, Loader2 } from 'lucide-react';
+import { checkSupabaseConnection } from './lib/supabaseClient';
+import { useAuth } from './hooks/useAuth';
 
 const btcData = [{value: 40}, {value: 35}, {value: 55}, {value: 45}, {value: 70}, {value: 60}, {value: 90}];
 const ethData = [{value: 30}, {value: 45}, {value: 35}, {value: 60}, {value: 50}, {value: 75}, {value: 65}];
@@ -25,10 +28,43 @@ export default function App() {
   const [currentView, setCurrentView] = useState('DASHBOARD');
   const [isChatPiP, setIsChatPiP] = useState(false);
   const [isChatActive, setIsChatActive] = useState(false);
-  const [showLanding, setShowLanding] = useState(true);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  
+  const { user, loading, isAdmin } = useAuth();
 
-  if (showLanding) {
-    return <LandingPage onStart={() => setShowLanding(false)} />;
+  useEffect(() => {
+    const init = async () => {
+      const isConnected = await checkSupabaseConnection();
+      if (isConnected) {
+        console.log('✅ AQUILA QUANT: Supabase Link Stable');
+      } else {
+        console.warn('⚠️ AQUILA QUANT: Supabase Link Pending Configuration');
+      }
+    };
+    init();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="h-screen w-full bg-[#050507] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Zap className="w-12 h-12 text-trading-green animate-pulse" />
+          <Loader2 className="w-6 h-6 text-zinc-500 animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <>
+        <LandingPage onStart={() => setIsAuthModalOpen(true)} />
+        <AuthModal 
+          isOpen={isAuthModalOpen} 
+          onClose={() => setIsAuthModalOpen(false)} 
+        />
+      </>
+    );
   }
 
   const handleToggleChatPiP = () => {
@@ -76,11 +112,13 @@ export default function App() {
           }
         }}
         currentView={currentView} 
-        onResetLanding={() => setShowLanding(true)}
+        onResetLanding={() => setCurrentView('DASHBOARD')}
+        user={user}
+        isAdmin={isAdmin}
       />
       
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto overflow-x-hidden scrollbar-hide relative z-10 transition-all duration-300">
-        <Header currentView={currentView} />
+        <Header currentView={currentView} user={user} />
         {renderView()}
       </main>
 
