@@ -246,23 +246,20 @@ export const Sidebar = ({
                   )}
                 </div>
 
-                {/* Locked Items - Cripto */}
+                {/* Market Items - Cripto */}
                 <div 
-                  className="relative group/lock overflow-hidden rounded-lg cursor-pointer"
-                  onClick={() => window.open('https://google.com', '_blank')}
+                  className={cn(
+                    "relative group overflow-hidden rounded-lg cursor-pointer",
+                    currentView === 'CRIPTO' ? "bg-white/5" : "hover:bg-white/5"
+                  )}
+                  onClick={() => onViewChange('CRIPTO')}
                 >
-                  <button className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-xs font-bold text-zinc-500 transition-all">
+                  <button className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-xs font-bold transition-all">
                     <div className="flex items-center gap-3">
-                      <Coins className="w-4 h-4" />
-                      <span>Cripto</span>
+                      <Coins className={cn("w-4 h-4", currentView === 'CRIPTO' ? "text-trading-green" : "text-zinc-500")} />
+                      <span className={cn(currentView === 'CRIPTO' ? "text-white" : "text-zinc-500 hover:text-white")}>Cripto</span>
                     </div>
                   </button>
-                  <div className="absolute inset-0 flex items-center px-4 opacity-0 group-hover/lock:opacity-100 transition-all duration-300 bg-white/5 backdrop-blur-md rounded-lg pointer-events-none">
-                    <span className="flex-1 text-center text-[9px] font-black uppercase tracking-widest text-trading-green">
-                      Liberar acesso
-                    </span>
-                    <Lock className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-                  </div>
                 </div>
               </motion.div>
             )}
@@ -270,132 +267,134 @@ export const Sidebar = ({
         </div>
 
         {/* Administrador */}
-        <div className="space-y-1">
-          <button
-            onClick={() => {
-              if (!currentView.startsWith('ADMIN')) onViewChange('ADMIN');
-              toggleMenu('admin');
-            }}
-            className={cn(
-              "flex items-center justify-between w-full px-4 py-3 rounded-xl transition-all duration-200 group text-sm font-semibold tracking-tight",
-              currentView.startsWith('ADMIN') ? "bg-white/5 text-trading-green" : "text-zinc-500 hover:text-white hover:bg-white/5"
-            )}
-          >
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Shield className={cn("w-5 h-5", currentView.startsWith('ADMIN') ? "text-trading-green" : "text-zinc-500 group-hover:text-zinc-300")} />
-                <Lock className="w-2.5 h-2.5 absolute -bottom-0.5 -right-0.5 text-zinc-400" />
+        {isAdmin && (
+          <div className="space-y-1">
+            <button
+              onClick={() => {
+                if (!currentView.startsWith('ADMIN')) onViewChange('ADMIN');
+                toggleMenu('admin');
+              }}
+              className={cn(
+                "flex items-center justify-between w-full px-4 py-3 rounded-xl transition-all duration-200 group text-sm font-semibold tracking-tight",
+                currentView.startsWith('ADMIN') ? "bg-white/5 text-trading-green" : "text-zinc-500 hover:text-white hover:bg-white/5"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Shield className={cn("w-5 h-5", currentView.startsWith('ADMIN') ? "text-trading-green" : "text-zinc-500 group-hover:text-zinc-300")} />
+                  <Lock className="w-2.5 h-2.5 absolute -bottom-0.5 -right-0.5 text-zinc-400" />
+                </div>
+                <span>Administrador</span>
               </div>
-              <span>Administrador</span>
-            </div>
-            <ChevronDown className={cn("w-4 h-4 transition-transform duration-300", expandedMenus.admin ? "rotate-180" : "")} />
-          </button>
+              <ChevronDown className={cn("w-4 h-4 transition-transform duration-300", expandedMenus.admin ? "rotate-180" : "")} />
+            </button>
 
-          <AnimatePresence>
-            {expandedMenus.admin && (
-              <motion.div 
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden pl-4 space-y-1 mt-1"
-              >
-                {/* Clientes */}
-                <button 
-                  onClick={() => onViewChange('ADMIN_CLIENTS')}
-                  className={cn(
-                    "flex items-center gap-3 w-full px-4 py-2 rounded-lg text-xs font-bold transition-all",
-                    currentView === 'ADMIN_CLIENTS' ? "text-white bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5"
-                  )}
+            <AnimatePresence>
+              {expandedMenus.admin && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden pl-4 space-y-1 mt-1"
                 >
-                  <Users className="w-4 h-4" />
-                  <span>Clientes</span>
-                </button>
-
-                {/* Admin B3 */}
-                <div className="space-y-1">
+                  {/* Clientes */}
                   <button 
-                    onClick={() => toggleMenu('adminB3')}
-                    className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors group"
+                    onClick={() => onViewChange('ADMIN_CLIENTS')}
+                    className={cn(
+                      "flex items-center gap-3 w-full px-4 py-2 rounded-lg text-xs font-bold transition-all",
+                      currentView === 'ADMIN_CLIENTS' ? "text-white bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5"
+                    )}
                   >
-                    <div className="flex items-center gap-3">
-                      <Monitor className="w-4 h-4" />
-                      <span>B3</span>
-                    </div>
-                    <ChevronRight className={cn("w-3.5 h-3.5 transition-transform", expandedMenus.adminB3 ? "rotate-90" : "")} />
+                    <Users className="w-4 h-4" />
+                    <span>Clientes</span>
                   </button>
-                  {expandedMenus.adminB3 && (
-                    <div className="pl-8 space-y-1 py-1">
-                      <button onClick={() => onViewChange('ADMIN_B3_DOLAR')} className={cn("flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors", currentView === 'ADMIN_B3_DOLAR' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5")}>
-                        <div className={cn("w-1 h-1 rounded-full", currentView === 'ADMIN_B3_DOLAR' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
-                        MINI DÓLAR
-                      </button>
-                      <button onClick={() => onViewChange('ADMIN_B3_INDICE')} className={cn("flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors", currentView === 'ADMIN_B3_INDICE' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5")}>
-                        <div className={cn("w-1 h-1 rounded-full", currentView === 'ADMIN_B3_INDICE' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
-                        MINI ÍNDICE
-                      </button>
-                    </div>
-                  )}
-                </div>
 
-                {/* Admin Forex */}
-                <div className="space-y-1">
-                  <button 
-                    onClick={() => toggleMenu('adminForex')}
-                    className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Globe className="w-4 h-4" />
-                      <span>Forex</span>
-                    </div>
-                    <ChevronRight className={cn("w-3.5 h-3.5 transition-transform", expandedMenus.adminForex ? "rotate-90" : "")} />
-                  </button>
-                  {expandedMenus.adminForex && (
-                    <div className="pl-8 space-y-1 py-1">
-                      <button onClick={() => onViewChange('ADMIN_FOREX_XAU')} className={cn("flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors", currentView === 'ADMIN_FOREX_XAU' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5")}>
-                        <div className={cn("w-1 h-1 rounded-full", currentView === 'ADMIN_FOREX_XAU' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
-                        XAU/USD
-                      </button>
-                      <button onClick={() => onViewChange('ADMIN_FOREX_EUR')} className={cn("flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors", currentView === 'ADMIN_FOREX_EUR' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5")}>
-                        <div className={cn("w-1 h-1 rounded-full", currentView === 'ADMIN_FOREX_EUR' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
-                        EUR/USD
-                      </button>
-                    </div>
-                  )}
-                </div>
+                  {/* Admin B3 */}
+                  <div className="space-y-1">
+                    <button 
+                      onClick={() => toggleMenu('adminB3')}
+                      className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Monitor className="w-4 h-4" />
+                        <span>B3</span>
+                      </div>
+                      <ChevronRight className={cn("w-3.5 h-3.5 transition-transform", expandedMenus.adminB3 ? "rotate-90" : "")} />
+                    </button>
+                    {expandedMenus.adminB3 && (
+                      <div className="pl-8 space-y-1 py-1">
+                        <button onClick={() => onViewChange('ADMIN_B3_DOLAR')} className={cn("flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors", currentView === 'ADMIN_B3_DOLAR' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5")}>
+                          <div className={cn("w-1 h-1 rounded-full", currentView === 'ADMIN_B3_DOLAR' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
+                          MINI DÓLAR
+                        </button>
+                        <button onClick={() => onViewChange('ADMIN_B3_INDICE')} className={cn("flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors", currentView === 'ADMIN_B3_INDICE' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5")}>
+                          <div className={cn("w-1 h-1 rounded-full", currentView === 'ADMIN_B3_INDICE' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
+                          MINI ÍNDICE
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
-                {/* Admin Cripto */}
-                <div className="space-y-1">
-                  <button 
-                    onClick={() => toggleMenu('adminCripto')}
-                    className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Coins className="w-4 h-4" />
-                      <span>Cripto</span>
-                    </div>
-                    <ChevronRight className={cn("w-3.5 h-3.5 transition-transform", expandedMenus.adminCripto ? "rotate-90" : "")} />
-                  </button>
-                  {expandedMenus.adminCripto && (
-                    <div className="pl-8 space-y-1 py-1">
-                      <button onClick={() => onViewChange('ADMIN_CRIPTO_BTC')} className={cn("flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors", currentView === 'ADMIN_CRIPTO_BTC' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5")}>
-                        <div className={cn("w-1 h-1 rounded-full", currentView === 'ADMIN_CRIPTO_BTC' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
-                        BITCOIN
-                      </button>
-                      <button onClick={() => onViewChange('ADMIN_CRIPTO_ETH')} className={cn("flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors", currentView === 'ADMIN_CRIPTO_ETH' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5")}>
-                        <div className={cn("w-1 h-1 rounded-full", currentView === 'ADMIN_CRIPTO_ETH' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
-                        ETHEREUM
-                      </button>
-                      <button onClick={() => onViewChange('ADMIN_CRIPTO_SOL')} className={cn("flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors", currentView === 'ADMIN_CRIPTO_SOL' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5")}>
-                        <div className={cn("w-1 h-1 rounded-full", currentView === 'ADMIN_CRIPTO_SOL' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
-                        SOLANA
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+                  {/* Admin Forex */}
+                  <div className="space-y-1">
+                    <button 
+                      onClick={() => toggleMenu('adminForex')}
+                      className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Globe className="w-4 h-4" />
+                        <span>Forex</span>
+                      </div>
+                      <ChevronRight className={cn("w-3.5 h-3.5 transition-transform", expandedMenus.adminForex ? "rotate-90" : "")} />
+                    </button>
+                    {expandedMenus.adminForex && (
+                      <div className="pl-8 space-y-1 py-1">
+                        <button onClick={() => onViewChange('ADMIN_FOREX_XAU')} className={cn("flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors", currentView === 'ADMIN_FOREX_XAU' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5")}>
+                          <div className={cn("w-1 h-1 rounded-full", currentView === 'ADMIN_FOREX_XAU' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
+                          XAU/USD
+                        </button>
+                        <button onClick={() => onViewChange('ADMIN_FOREX_EUR')} className={cn("flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors", currentView === 'ADMIN_FOREX_EUR' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5")}>
+                          <div className={cn("w-1 h-1 rounded-full", currentView === 'ADMIN_FOREX_EUR' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
+                          EUR/USD
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Admin Cripto */}
+                  <div className="space-y-1">
+                    <button 
+                      onClick={() => toggleMenu('adminCripto')}
+                      className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Coins className="w-4 h-4" />
+                        <span>Cripto</span>
+                      </div>
+                      <ChevronRight className={cn("w-3.5 h-3.5 transition-transform", expandedMenus.adminCripto ? "rotate-90" : "")} />
+                    </button>
+                    {expandedMenus.adminCripto && (
+                      <div className="pl-8 space-y-1 py-1">
+                        <button onClick={() => onViewChange('ADMIN_CRIPTO_BTC')} className={cn("flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors", currentView === 'ADMIN_CRIPTO_BTC' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5")}>
+                          <div className={cn("w-1 h-1 rounded-full", currentView === 'ADMIN_CRIPTO_BTC' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
+                          BITCOIN
+                        </button>
+                        <button onClick={() => onViewChange('ADMIN_CRIPTO_ETH')} className={cn("flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors", currentView === 'ADMIN_CRIPTO_ETH' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5")}>
+                          <div className={cn("w-1 h-1 rounded-full", currentView === 'ADMIN_CRIPTO_ETH' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
+                          ETHEREUM
+                        </button>
+                        <button onClick={() => onViewChange('ADMIN_CRIPTO_SOL')} className={cn("flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors", currentView === 'ADMIN_CRIPTO_SOL' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5")}>
+                          <div className={cn("w-1 h-1 rounded-full", currentView === 'ADMIN_CRIPTO_SOL' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
+                          SOLANA
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
       </nav>
 
       <div className="space-y-4">

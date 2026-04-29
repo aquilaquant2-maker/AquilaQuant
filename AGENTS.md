@@ -48,3 +48,14 @@ Antes de qualquer mudança não trivial, o diagnóstico deve incluir:
 2. Análise de stack trace.
 3. Root Cause Analysis (RCA).
 4. Código corrigido + explicação técnica.
+
+## 7. CÁLCULO QUANTITATIVO (DNA AQUILA) - IMUTÁVEL
+- **FONTE DE DADOS:** CSV com Cabeçalho (L1) e Pregão Atual (L2).
+- **OFFSET:** Sempre usar `lines.slice(2)` para ignorar os dois primeiros registros no processamento de médias.
+- **MAPEAMENTO (Lógica Python):** 
+  - Coluna Index 2 (Abertura no CSV) = `high` (para fins de cálculo).
+  - Coluna Index 3 (Máxima no CSV) = `low` (para fins de cálculo).
+- **CÁLCULO X:** Amplitude `X = high - low`.
+- **VOLATILIDADE (Y):** `roundToHalf(Standard Deviation (ddof=0))`.
+- **MÉDIA (B):** `roundToHalf(Mean of X)`.
+- **UNIVERSALIDADE:** Este motor é soberano para todos os ativos e planilhas. Alterar essa lógica sem ordem direta do CEO é proibido.

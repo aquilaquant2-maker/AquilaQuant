@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { MarketCard } from './components/MarketCard';
@@ -16,6 +17,7 @@ import { LandingPage } from './components/LandingPage';
 import { AdminView } from './components/AdminView';
 import { HomeDashboardWidgets } from './components/HomeDashboardWidgets';
 import { AuthModal } from './components/AuthModal';
+import { AccessGate } from './components/AccessGate';
 import { Bitcoin, Cpu, Zap, ChevronDown, Shield, Lock, Loader2 } from 'lucide-react';
 import { checkSupabaseConnection } from './lib/supabaseClient';
 import { useAuth } from './hooks/useAuth';
@@ -24,48 +26,65 @@ const btcData = [{value: 40}, {value: 35}, {value: 55}, {value: 45}, {value: 70}
 const ethData = [{value: 30}, {value: 45}, {value: 35}, {value: 60}, {value: 50}, {value: 75}, {value: 65}];
 const bnbData = [{value: 80}, {value: 70}, {value: 85}, {value: 60}, {value: 75}, {value: 55}, {value: 45}];
 
-export default function App() {
-  const [currentView, setCurrentView] = useState('DASHBOARD');
-  const [isChatPiP, setIsChatPiP] = useState(false);
-  const [isChatActive, setIsChatActive] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  
-  const { user, loading, isAdmin } = useAuth();
+// Componente de proteção de rota de elite
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  user: any;
+  isInitializing: boolean;
+  onEnter: () => void;
+}
 
-  useEffect(() => {
-    const init = async () => {
-      const isConnected = await checkSupabaseConnection();
-      if (isConnected) {
-        console.log('✅ AQUILA QUANT: Supabase Link Stable');
-      } else {
-        console.warn('⚠️ AQUILA QUANT: Supabase Link Pending Configuration');
-      }
-    };
-    init();
-  }, []);
-
-  if (loading) {
+const ProtectedRoute = ({ children, user, isInitializing, onEnter }: ProtectedRouteProps) => {
+  if (isInitializing) {
     return (
       <div className="h-screen w-full bg-[#050507] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Zap className="w-12 h-12 text-trading-green animate-pulse" />
           <Loader2 className="w-6 h-6 text-zinc-500 animate-spin" />
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-700">Iniciando Ambiente Seguro...</p>
         </div>
       </div>
     );
   }
 
   if (!user) {
-    return (
-      <>
-        <LandingPage onStart={() => setIsAuthModalOpen(true)} />
-        <AuthModal 
-          isOpen={isAuthModalOpen} 
-          onClose={() => setIsAuthModalOpen(false)} 
-        />
-      </>
-    );
+    onEnter();
+    return null;
   }
+
+  return <>{children}</>;
+};
+
+export default function App() {
+  const [currentView, setCurrentView] = useState('DASHBOARD');
+  const [isChatPiP, setIsChatPiP] = useState(false);
+  const [isChatActive, setIsChatActive] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [hasEntered, setHasEntered] = useState(false);
+  const isFirstLoad = React.useRef(true);
+  
+  const { user, loading, isAdmin, isInitializing } = useAuth();
+  
+  useEffect(() => {
+    const init = async () => {
+      await checkSupabaseConnection();
+    };
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (!user && hasEntered) {
+      setHasEntered(false);
+    }
+
+    if (user && !isFirstLoad.current && !hasEntered) {
+      setHasEntered(true);
+    }
+
+    if (isFirstLoad.current) {
+      isFirstLoad.current = false;
+    }
+  }, [user, hasEntered]);
 
   const handleToggleChatPiP = () => {
     setIsChatPiP(!isChatPiP);
@@ -76,10 +95,41 @@ export default function App() {
     switch (currentView) {
       case 'PROFILE': return <Profile />;
       case 'SUPPORT': return <SupportView />;
-      case 'MINI_DOLAR': return <TradingDashboard assetName="MINI DÓLAR" assetCode="WDO / DOL" category="B3" />;
-      case 'MINI_INDICE': return <TradingDashboard assetName="MINI ÍNDICE" assetCode="WIN / IND" category="B3" />;
-      case 'EUR_USD': return <TradingDashboard assetName="Euro / Dólar" assetCode="EUR / USD" category="FOREX" />;
-      case 'XAU_USD': return <TradingDashboard assetName="Ouro (Gold)" assetCode="XAU / USD" category="FOREX" />;
+      case 'PERFORMANCE': return <PerformanceView />;
+      case 'RESULTS': return <ResultsGallery />;
+      case 'LEADERBOARD': return <Leaderboard />;
+      case 'STUDY': return <ArticlesStudy />;
+      case 'CHAT': return <LiveChat />;
+      case 'MINI_DOLAR': 
+        return (
+          <AccessGate requiredTag="B3">
+            <TradingDashboard assetName="MINI DÓLAR" assetCode="WDO / DOL" category="B3" />
+          </AccessGate>
+        );
+      case 'MINI_INDICE': 
+        return (
+          <AccessGate requiredTag="B3">
+            <TradingDashboard assetName="MINI ÍNDICE" assetCode="WIN / IND" category="B3" />
+          </AccessGate>
+        );
+      case 'EUR_USD': 
+        return (
+          <AccessGate requiredTag="Forex">
+            <TradingDashboard assetName="Euro / Dólar" assetCode="EUR / USD" category="FOREX" />
+          </AccessGate>
+        );
+      case 'XAU_USD': 
+        return (
+          <AccessGate requiredTag="Forex">
+            <TradingDashboard assetName="Ouro (Gold)" assetCode="XAU / USD" category="FOREX" />
+          </AccessGate>
+        );
+      case 'CRIPTO':
+        return (
+          <AccessGate requiredTag="Cripto">
+            <CryptoPriceList />
+          </AccessGate>
+        );
       case 'ADMIN': 
       case 'ADMIN_CLIENTS':
       case 'ADMIN_B3_DOLAR':
@@ -89,6 +139,10 @@ export default function App() {
       case 'ADMIN_CRIPTO_BTC':
       case 'ADMIN_CRIPTO_ETH':
       case 'ADMIN_CRIPTO_SOL':
+        if (!isAdmin) {
+          setCurrentView('DASHBOARD');
+          return <HomeDashboardWidgets />;
+        }
         return <AdminView currentView={currentView} onViewChange={setCurrentView} />;
       case 'DASHBOARD':
       default:
@@ -96,46 +150,79 @@ export default function App() {
     }
   };
 
-  return (
-    <div className="flex h-screen bg-[#050507] text-white overflow-hidden font-sans relative">
-      {/* Background Grid Lines Overlay */}
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none z-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]"></div>
-
-      <Sidebar 
-        onViewChange={(view) => {
-          if (view === 'CHAT') {
-            setCurrentView('CHAT');
-            setIsChatActive(true);
-            setIsChatPiP(false);
-          } else {
-            setCurrentView(view);
-          }
-        }}
-        currentView={currentView} 
-        onResetLanding={() => setCurrentView('DASHBOARD')}
-        user={user}
-        isAdmin={isAdmin}
-      />
-      
-      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto overflow-x-hidden scrollbar-hide relative z-10 transition-all duration-300">
-        <Header currentView={currentView} user={user} />
-        {renderView()}
-      </main>
-
-      {/* Chat PiP Overlay */}
-      {isChatActive && isChatPiP && (
-        <LiveChat 
-          isPiP={true} 
-          onTogglePiP={() => {
-            setCurrentView('CHAT');
-            setIsChatPiP(false);
+  // RENDERIZAÇÃO NÃO-BLOQUEANTE:
+  // Se não entrou ou não tem usuário, Landing Page é soberana.
+  if (!hasEntered || (!user && !isInitializing)) {
+    return (
+      <>
+        <LandingPage 
+          user={user}
+          onStart={() => {
+            if (user) {
+              setHasEntered(true);
+            } else {
+              setIsAuthModalOpen(true);
+            }
           }} 
-          onClose={() => {
-            setIsChatActive(false);
-            setIsChatPiP(false);
-          }}
         />
-      )}
-    </div>
+        <AuthModal 
+          isOpen={isAuthModalOpen} 
+          onClose={() => setIsAuthModalOpen(false)} 
+        />
+      </>
+    );
+  }
+
+  return (
+    <ProtectedRoute 
+      user={user} 
+      isInitializing={isInitializing} 
+      onEnter={() => setHasEntered(false)}
+    >
+      <div className="flex h-screen bg-[#050507] text-white overflow-hidden font-sans relative">
+        {/* Background Grid Lines Overlay */}
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none z-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]"></div>
+
+        <Sidebar 
+          onViewChange={(view) => {
+            if (view === 'CHAT') {
+              setCurrentView('CHAT');
+              setIsChatActive(true);
+              setIsChatPiP(false);
+            } else {
+              setCurrentView(view);
+            }
+          }}
+          currentView={currentView} 
+          onResetLanding={() => {
+            setHasEntered(false);
+            setCurrentView('DASHBOARD');
+          }}
+          user={user}
+          isAdmin={isAdmin}
+        />
+        
+        <main className="flex-1 flex flex-col min-w-0 overflow-y-auto overflow-x-hidden scrollbar-hide relative z-10 transition-all duration-300">
+          <Header currentView={currentView} user={user} />
+          {renderView()}
+        </main>
+
+        {/* Chat PiP Overlay */}
+        {isChatActive && isChatPiP && (
+          <LiveChat 
+            isPiP={true} 
+            onTogglePiP={() => {
+              setCurrentView('CHAT');
+              setIsChatPiP(false);
+            }} 
+            onClose={() => {
+              setIsChatActive(false);
+              setIsChatPiP(false);
+            }}
+          />
+        )}
+      </div>
+    </ProtectedRoute>
   );
 }
+

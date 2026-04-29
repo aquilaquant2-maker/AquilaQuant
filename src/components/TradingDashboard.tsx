@@ -15,7 +15,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   ShieldCheck,
-  Activity
+  Activity,
+  Loader2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -32,6 +33,8 @@ import {
   Cell
 } from 'recharts';
 import { XAUUSDWidgets } from './XAUUSDWidgets';
+import { supabase } from '../lib/supabaseClient';
+import { roundToHalf } from '../lib/quantEngine';
 
 interface TradingDashboardProps {
   assetName: string;
@@ -82,17 +85,22 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [opening, setOpening] = useState('');
   const [showError, setShowError] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [calcError, setCalcError] = useState<string | null>(null);
+  const [metricsData, setMetricsData] = useState<any>(null);
 
   // Reset state when asset changes
   React.useEffect(() => {
     setStep('input');
     setOpening('');
+    setMetricsData(null);
+    setCalcError(null);
   }, [assetCode]);
 
   const [performanceUnlocked, setPerformanceUnlocked] = useState(false);
   const [randomModel] = useState(Math.random() > 0.5 ? 'A' : 'B');
 
-  const handleCalculate = (e: React.FormEvent) => {
+  const handleCalculate = async (e: React.FormEvent) => {
     e.preventDefault();
     const today = new Date();
     const selectedDate = new Date(date);
@@ -103,7 +111,140 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
     }
     
     setShowError(false);
-    setStep('results');
+    setIsLoading(true);
+    setCalcError(null);
+
+    try {
+      // 1. Limpeza e validação do valor de abertura [Elite Standard]
+      const cleanInput = (val: string) => {
+        let s = val.trim();
+        // Lógica B3/Brasil: 4.974,00 -> 4974.00
+        if (s.includes(',') && s.includes('.')) {
+          return parseFloat(s.replace(/\./g, '').replace(',', '.'));
+        }
+        if (s.includes(',')) return parseFloat(s.replace(',', '.'));
+        // Proteção para valores como 4.974 (onde o ponto é milhar e não decimal)
+        if (s.includes('.') && s.length >= 5) {
+          return parseFloat(s.replace(/\./g, ''));
+        }
+        return parseFloat(s);
+      };
+
+      const cleanOpening = cleanInput(opening);
+      
+      if (isNaN(cleanOpening)) {
+        throw new Error('O valor de abertura deve ser um número válido (Ex: 4.974,00 ou 5250.50)');
+      }
+
+      // 2. Normalização do Símbolo
+      let normalizedSymbol = assetCode.replace(/\s+/g, '').toUpperCase();
+      
+      // Mapeamento de sinonimos comuns
+      const symbolMap: Record<string, string> = {
+        'EURO/DÓLAR': 'EURUSD',
+        'OURO': 'XAUUSD',
+        'XAU/USD': 'XAUUSD',
+        'WIN': 'WIN',
+        'WDO': 'WDO'
+      };
+
+      if (symbolMap[normalizedSymbol]) {
+        normalizedSymbol = symbolMap[normalizedSymbol];
+      }
+
+      console.log(`AQUILA QUANT [Calculo]: Processando ${normalizedSymbol} (Original: ${assetCode})`);
+
+      let finalData = null;
+
+      // 3. TENTATIVA 1: Edge Function com Timeout Agressivo (2.5s)
+      try {
+        const invokePromise = supabase.functions.invoke('calculate-regions', {
+          body: { assetSymbol: normalizedSymbol, abertura: cleanOpening }
+        });
+
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('TIMEOUT')), 5000)
+        );
+
+        const response: any = await Promise.race([invokePromise, timeoutPromise]);
+        
+        if (response && response.data && !response.data.error) {
+          finalData = response.data;
+        }
+      } catch (fError) {
+        console.warn('AQUILA QUANT [System]: Edge Function lenta ou inexistente. Usando Fallback de Bancada...');
+      }
+
+      // 4. TENTATIVA 2: Fallback Direto via Database (SSOT)
+      if (!finalData) {
+        // Buscamos metrics tanto pelo simbolo normalizado quanto pelo exato
+        const { data: metrics, error: mError } = await supabase
+          .from('asset_historical_metrics')
+          .select('*')
+          .or(`asset_symbol.eq.${normalizedSymbol},asset_symbol.eq.${assetCode}`)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (mError || !metrics) {
+          throw new Error('Métricas não encontradas para ' + assetCode + '. O Admin deve subir o histórico de pips/ticks antes de calcular.');
+        }
+
+        const y = metrics.y_value;
+        const b = metrics.mean_b_value;
+        const o = cleanOpening;
+
+        // Cálculos Quantitativos v5.6 [FIDELIDADE TOTAL AO SCRIPT PYTHON]
+        const A = y / 2;
+        const B = b;              // B já vem arredondado da Engine
+        const C = B / 2;
+        const D = B / 10;
+        
+        const stopLossMin = roundToHalf(D / 2);
+        const stopLossMax = stopLossMin * 2;
+        const stopGainMin = y / 2;
+        const stopGainMax = y;
+
+        // Parse da data sem shift de timezone
+        const [yearArr, monthArr, dayArr] = date.split('-').map(Number);
+        const displayDate = new Date(yearArr, monthArr - 1, dayArr).toLocaleDateString('pt-BR');
+
+        finalData = {
+          asset: normalizedSymbol,
+          abertura: o,
+          date: displayDate,
+          quant_analysis: {
+            regions: {
+              major_up: [(o + y), (o + (y * 2)), (o + (y * 3)), (o + (y * 4))],
+              major_down: [(o - y), (o - (y * 2)), (o - (y * 3)), (o - (y * 4))],
+              intermediate_up: [(o + (y * 1.5)), (o + (y * 2.5)), (o + (y * 3.5)), (o + (y * 4.5))],
+              intermediate_down: [(o - (y * 1.5)), (o - (y * 2.5)), (o - (y * 3.5)), (o - (y * 4.5))],
+            },
+            extreme: {
+              max: [(o + C), ((o + C) + A)],
+              min: [(o - C), ((o - C) - A)]
+            },
+            frequency: {
+              a: y / 2,        // Frequência A (Y/2)
+              b: y,            // Volatilidade Y
+              mean_b: b        // Média Estatística B
+            }
+          },
+          stops: {
+            loss: [Math.abs(stopLossMin), Math.abs(stopLossMax)],
+            gain: [stopGainMin, stopGainMax]
+          }
+        };
+      }
+
+      setMetricsData(finalData);
+      setStep('results');
+    } catch (err: any) {
+      console.error('AQUILA QUANT [Calculation Error]:', err);
+      setCalcError(err.message || 'Erro crítico no processamento.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (step === 'input') {
@@ -123,7 +264,7 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
                <Activity className="w-8 h-8 text-trading-green" />
             </div>
             <h2 className="text-3xl font-black uppercase tracking-tighter text-white">Configurar {assetName}</h2>
-            <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mt-2">Relatório Quantitativo v.10</p>
+            <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mt-2">Relatório Quantitativo v5.6 [Elite]</p>
           </div>
 
           <form onSubmit={handleCalculate} className="space-y-8">
@@ -165,7 +306,14 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
                 placeholder="Ex: 5.250,50"
                 className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 px-6 text-sm font-bold text-white outline-none focus:ring-1 focus:ring-trading-green/30 transition-all placeholder:text-zinc-700"
                 required
+                disabled={isLoading}
               />
+              {calcError && (
+                <div className="flex items-center gap-2 mt-2 px-1 text-trading-red">
+                  <AlertCircle className="w-3 h-3" />
+                  <span className="text-[10px] font-black uppercase tracking-tight">{calcError}</span>
+                </div>
+              )}
               <div className="p-4 bg-trading-green/5 border border-trading-green/10 rounded-xl mt-4">
                  <p className="text-[9px] font-black text-trading-green uppercase leading-relaxed text-center tracking-widest">
                    Confira bem o valor antes de prosseguir. Ele deve ser referente à abertura oficial do ativo na data escolhida.
@@ -175,9 +323,14 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
 
             <button 
               type="submit"
-              className="w-full py-5 bg-trading-green text-black rounded-2xl font-black uppercase tracking-[0.3em] text-xs shadow-lg shadow-trading-green/10 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
+              disabled={isLoading}
+              className="w-full py-5 bg-trading-green text-black rounded-2xl font-black uppercase tracking-[0.3em] text-xs shadow-lg shadow-trading-green/10 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-               Calcular Regiões <ChevronRight className="w-4 h-4" />
+               {isLoading ? (
+                 <>Processando... <Loader2 className="w-4 h-4 animate-spin" /></>
+               ) : (
+                 <>Calcular Regiões <ChevronRight className="w-4 h-4" /></>
+               )}
             </button>
           </form>
         </motion.div>
@@ -203,7 +356,7 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
                </div>
                <div className="flex items-center gap-2 mt-1">
                  <Calendar className="w-3.5 h-3.5 text-zinc-500" />
-                 <span className="text-xs font-bold text-zinc-500">{new Date(date).toLocaleDateString()}</span>
+                 <span className="text-xs font-bold text-zinc-500">{date.split('-').reverse().join('/')}</span>
                  <span className="text-zinc-700 mx-2">•</span>
                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Abertura: <span className="text-white">{opening}</span></p>
                </div>
@@ -237,31 +390,40 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
                 <div className="flex items-center gap-8">
                    <div className="flex flex-col items-end">
                       <span className="text-[9px] font-black text-zinc-500 uppercase">Gain</span>
-                      <span className="text-lg font-black text-trading-green leading-none">30,5</span>
+                      <span className="text-lg font-black text-trading-green leading-none">
+                        {metricsData?.quant_analysis?.risk_management?.stop_gain?.max?.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
+                      </span>
                    </div>
                    <div className="flex flex-col items-end">
                       <span className="text-[9px] font-black text-zinc-500 uppercase">Loss</span>
-                      <span className="text-lg font-black text-trading-red leading-none">6,0</span>
+                      <span className="text-lg font-black text-trading-red leading-none">
+                        {metricsData?.quant_analysis?.risk_management?.stop_loss?.max?.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
+                      </span>
                    </div>
                 </div>
               )}
+
            </div>
 
            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {[
-                { label: '0.8 Desvio', val: '5250,5', sub: '5265,75' },
-                { label: '0.8 Desvio', val: '5281', sub: '5296,25' },
-                { label: '0.8 Desvio 0.5', val: '5311,5', sub: '5326,75' },
-                { label: '0.8 Desvio 0.5', val: '5342', sub: '5357,25' },
-                { label: 'Sup Inverso', val: '5189,5', sub: '5174,25' },
-                { label: 'Sup Inverso', val: '5159', sub: '5143,75' },
-                { label: 'Sup Inverso -0.5', val: '5128,5', sub: '5113,25' },
-                { label: 'Sup Inverso -0.5', val: '5098', sub: '5082,75' },
+                { label: '1.0 Desvio (UP)', val: metricsData?.quant_analysis?.regions?.major_up[0], sub: metricsData?.quant_analysis?.regions?.intermediate_up[0] },
+                { label: '2.0 Desvio (UP)', val: metricsData?.quant_analysis?.regions?.major_up[1], sub: metricsData?.quant_analysis?.regions?.intermediate_up[1] },
+                { label: '3.0 Desvio (UP)', val: metricsData?.quant_analysis?.regions?.major_up[2], sub: metricsData?.quant_analysis?.regions?.intermediate_up[2] },
+                { label: '4.0 Desvio (UP)', val: metricsData?.quant_analysis?.regions?.major_up[3], sub: metricsData?.quant_analysis?.regions?.intermediate_up[3] },
+                { label: '1.0 Desvio (DOWN)', val: metricsData?.quant_analysis?.regions?.major_down[0], sub: metricsData?.quant_analysis?.regions?.intermediate_down[0] },
+                { label: '2.0 Desvio (DOWN)', val: metricsData?.quant_analysis?.regions?.major_down[1], sub: metricsData?.quant_analysis?.regions?.intermediate_down[1] },
+                { label: '3.0 Desvio (DOWN)', val: metricsData?.quant_analysis?.regions?.major_down[2], sub: metricsData?.quant_analysis?.regions?.intermediate_down[2] },
+                { label: '4.0 Desvio (DOWN)', val: metricsData?.quant_analysis?.regions?.major_down[3], sub: metricsData?.quant_analysis?.regions?.intermediate_down[3] },
               ].map((item, i) => (
                 <div key={i} className="p-5 rounded-3xl bg-white/[0.02] border border-white/5 text-center group hover:border-trading-green/20 transition-all">
                   <p className="text-[9px] font-black text-zinc-600 uppercase mb-2 tracking-tighter">{item.label}</p>
-                  <p className="text-xl font-black text-white">{item.val}</p>
-                  <p className="text-[10px] font-bold text-zinc-500 mt-1">{item.sub}</p>
+                  <p className="text-xl font-black text-white">
+                    {item.val?.toLocaleString('pt-BR', { minimumFractionDigits: category === 'B3' ? 1 : 5 })}
+                  </p>
+                  <p className="text-[10px] font-bold text-zinc-500 mt-1">
+                    {item.sub?.toLocaleString('pt-BR', { minimumFractionDigits: category === 'B3' ? 1 : 5 })}
+                  </p>
                 </div>
               ))}
            </div>
@@ -279,15 +441,23 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
                  <div className="flex items-center gap-4">
                     <TrendingUp className="w-10 h-10 text-trading-green opacity-20" />
                     <div className="space-y-1">
-                       <p className="text-xl font-black text-white">5250</p>
-                       <p className="text-[10px] font-bold text-zinc-500">5265,25</p>
+                       <p className="text-xl font-black text-white">
+                         {metricsData?.quant_analysis?.extreme?.max[0]?.toLocaleString('pt-BR', { minimumFractionDigits: category === 'B3' ? 1 : 5, maximumFractionDigits: 2 })}
+                       </p>
+                       <p className="text-[10px] font-bold text-zinc-500">
+                         {metricsData?.quant_analysis?.extreme?.max[1]?.toLocaleString('pt-BR', { minimumFractionDigits: category === 'B3' ? 1 : 5, maximumFractionDigits: 2 })}
+                       </p>
                     </div>
                  </div>
                  <div className="flex items-center gap-4">
                     <TrendingDown className="w-10 h-10 text-trading-red opacity-20" />
                     <div className="space-y-1">
-                       <p className="text-xl font-black text-white">5190</p>
-                       <p className="text-[10px] font-bold text-zinc-500">5174,75</p>
+                       <p className="text-xl font-black text-white">
+                         {metricsData?.quant_analysis?.extreme?.min[0]?.toLocaleString('pt-BR', { minimumFractionDigits: category === 'B3' ? 1 : 5, maximumFractionDigits: 2 })}
+                       </p>
+                       <p className="text-[10px] font-bold text-zinc-500">
+                         {metricsData?.quant_analysis?.extreme?.min[1]?.toLocaleString('pt-BR', { minimumFractionDigits: category === 'B3' ? 1 : 5, maximumFractionDigits: 2 })}
+                       </p>
                     </div>
                  </div>
               </div>
@@ -302,13 +472,17 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
                 </div>
                 <div className="flex items-center justify-around">
                    <div className="text-center">
-                      <p className="text-2xl font-black text-white">5195,5</p>
-                      <p className="text-[9px] font-black text-zinc-600 uppercase mt-1">Frequência A</p>
+                      <p className="text-2xl font-black text-white">
+                        {metricsData?.quant_analysis?.frequency?.b?.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
+                      </p>
+                      <p className="text-[9px] font-black text-zinc-600 uppercase mt-1">Volatilidade (Y)</p>
                    </div>
                    <div className="w-px h-12 bg-white/5" />
                    <div className="text-center">
-                      <p className="text-2xl font-black text-white">5182,5</p>
-                      <p className="text-[9px] font-black text-zinc-600 uppercase mt-1">Frequência B</p>
+                      <p className="text-2xl font-black text-white">
+                        {metricsData?.quant_analysis?.frequency?.mean_b?.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
+                      </p>
+                      <p className="text-[9px] font-black text-zinc-600 uppercase mt-1">Média X (B)</p>
                    </div>
                 </div>
              </div>
@@ -320,17 +494,22 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
                 </div>
                 <div className="flex items-center justify-around">
                    <div className="text-center">
-                      <p className="text-3xl font-black text-trading-green">30,5</p>
+                      <p className="text-3xl font-black text-trading-green">
+                        {metricsData?.stops?.gain[1]?.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
+                      </p>
                       <p className="text-[9px] font-black text-zinc-600 uppercase mt-1">Gain Máximo</p>
                    </div>
                    <div className="w-px h-12 bg-white/5" />
                    <div className="text-center">
-                      <p className="text-3xl font-black text-trading-red">6,0</p>
+                      <p className="text-3xl font-black text-trading-red">
+                        {metricsData?.stops?.loss[1]?.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
+                      </p>
                       <p className="text-[9px] font-black text-zinc-600 uppercase mt-1">Loss Máximo</p>
                    </div>
                 </div>
              </div>
            )}
+
         </div>
       </div>
 

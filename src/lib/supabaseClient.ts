@@ -1,32 +1,48 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrlRaw = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrlRaw = import.meta.env.VITE_SUPABASE_URL?.trim();
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
-// Sanitização: Remove /rest/v1/ ou barras extras no final se o usuário colou o link errado
-const supabaseUrl = supabaseUrlRaw?.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
-
-/**
- * Singleton Supabase Client
- */
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn(
-    'Supabase credentials missing. Connection will not be established until VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.'
-  );
+if (!supabaseUrlRaw || !supabaseAnonKey) {
+  console.error('AQUILA QUANT [Config Error]: Variáveis de ambiente do Supabase não encontradas. Verifique os Secrets.');
+} else {
+  console.log('AQUILA QUANT [System]: Supabase URL detectada:', supabaseUrlRaw.substring(0, 15) + '...');
 }
 
+// Sanitização robusta: Remove /rest/v1 e barras finais de qualquer lugar do final da string
+const supabaseUrl = supabaseUrlRaw
+  ?.trim()
+  ?.replace(/\/rest\/v1\/?$/, '') 
+  ?.replace(/\/$/, '');
+
+// Simplificação total para Auth Manual
 export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-key'
+  supabaseUrl || '',
+  supabaseAnonKey || '',
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: true,
+      detectSessionInUrl: false
+    },
+    global: {
+      headers: { 'x-application-name': 'aquila-quant-elite' }
+    }
+  }
 );
 
-/**
- * Helper para verificar se a conexão está ativa (Pillat 7 da segurança: Atomicity Check)
- */
 export const checkSupabaseConnection = async () => {
   try {
-    const { data, error } = await supabase.from('profiles').select('id').limit(1);
-    if (error) throw error;
+    // Tenta uma operação ultra leve e rápida
+    const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true }).limit(1);
+    
+    if (error) {
+      // Se for erro de auth/RLS, o cliente está se comunicando
+      if (error.code === 'PGRST301' || error.message?.includes('JWT')) {
+        return true;
+      }
+      throw error;
+    }
     return true;
   } catch (err) {
     console.error('[Supabase Connection Error]:', err);

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Mail, Lock, User as UserIcon, Loader2, ArrowRight } from 'lucide-react';
-import { authService, loginSchema, registerSchema, LoginInput, RegisterInput } from '../lib/authService';
+import { X, Mail, Lock, User as UserIcon, Loader2, ArrowRight, RefreshCw } from 'lucide-react';
+import { loginSchema, registerSchema, authService } from '../lib/authService';
+import { CUSTOM_STORAGE_KEY } from '../lib/supabaseClient';
 import { ZodError } from 'zod';
+import { cn } from '../lib/utils';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -13,6 +15,7 @@ interface AuthModalProps {
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'login' }) => {
   const [mode, setMode] = useState<'login' | 'register'>(initialMode);
   const [isLoading, setIsLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     email: '',
@@ -24,25 +27,44 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return; // Arquiteto de Prompts: Loading Lock ativado
+    
     setIsLoading(true);
     setError(null);
+
+    const isConfigured = import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY;
+    if (!isConfigured) {
+      setError('Configuração do Supabase ausente nos Secrets.');
+      setIsLoading(false);
+      return;
+    }
 
     try {
       if (mode === 'login') {
         const validated = loginSchema.parse({ email: formData.email, password: formData.password });
-        await authService.signIn(validated);
+        await authService.signIn(validated, rememberMe);
       } else {
         const validated = registerSchema.parse(formData);
-        await authService.signUp(validated);
+        await authService.signUp(validated, rememberMe);
         setError('Conta criada! Verifique seu email para confirmar.');
         return;
       }
       onClose();
     } catch (err: any) {
+      console.error('AQUILA QUANT [Auth Error]:', err);
+      
       if (err instanceof ZodError) {
         setError(err.issues[0].message);
+      } else if (err.message?.includes('Failed to fetch') || err.message?.includes('Load failed')) {
+        setError('Erro de conexão. Verifique sua rede.');
+      } else if (err.message?.includes('Invalid login credentials')) {
+        setError('Email ou senha incorretos.');
+      } else if (err.message?.includes('Email not confirmed')) {
+        setError('Por favor, confirme seu email.');
+      } else if (err.status === 429) {
+        setError('Muitas tentativas. Tente novamente mais tarde.');
       } else {
-        setError(err.message || 'Ocorreu um erro inesperado.');
+        setError('Erro ao processar autenticação. Tente novamente.');
       }
     } finally {
       setIsLoading(false);
@@ -135,13 +157,35 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
               </div>
             </div>
 
+            {mode === 'login' && (
+              <div className="flex items-center gap-2 ml-1">
+                <input
+                  type="checkbox"
+                  id="remember"
+                  className="w-4 h-4 rounded border-white/10 bg-white/5 text-trading-green focus:ring-0 focus:ring-offset-0 transition-all cursor-pointer"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                />
+                <label htmlFor="remember" className="text-[10px] font-black uppercase tracking-widest text-zinc-500 cursor-pointer select-none hover:text-zinc-300 transition-colors">
+                  Lembrar desta sessão
+                </label>
+              </div>
+            )}
+
             {error && (
               <motion.div 
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest text-center"
+                className="space-y-2"
               >
-                {error}
+                <div className={cn(
+                  "p-3 rounded-xl border text-[10px] font-black uppercase tracking-widest text-center animate-in fade-in slide-in-from-top-1",
+                  error.includes('Conta criada') || error.includes('Verifique seu email')
+                    ? "bg-trading-green/10 border-trading-green/20 text-trading-green"
+                    : "bg-red-500/10 border-red-500/20 text-red-500"
+                )}>
+                  {error}
+                </div>
               </motion.div>
             )}
 

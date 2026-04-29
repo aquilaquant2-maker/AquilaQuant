@@ -35,7 +35,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 
-export const LandingPage = ({ onStart }: { onStart: () => void }) => {
+export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any }) => {
   const [activeFaq, setActiveFaq] = React.useState<number | null>(null);
 
   React.useEffect(() => {
@@ -118,7 +118,7 @@ export const LandingPage = ({ onStart }: { onStart: () => void }) => {
             onClick={onStart}
             className="px-6 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest transition-all hover:border-trading-green/30 text-white"
           >
-            Login
+            {user ? 'Dashboard' : 'Login'}
           </button>
         </nav>
       </div>
@@ -175,7 +175,7 @@ export const LandingPage = ({ onStart }: { onStart: () => void }) => {
                 onClick={onStart}
                 className="w-full sm:w-auto px-10 py-5 bg-trading-green text-black rounded-2xl font-black uppercase text-sm tracking-[0.2em] shadow-2xl shadow-trading-green/40 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
               >
-                Começar agora <ArrowRight className="w-5 h-5" />
+                {user ? 'Acessar Dashboard' : 'Começar agora'} <ArrowRight className="w-5 h-5" />
               </button>
             </div>
 

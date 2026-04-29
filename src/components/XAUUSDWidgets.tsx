@@ -6,23 +6,42 @@ interface WidgetProps {
 
 const TradingViewEmbed = ({ scriptSrc, config, height = '400px' }: { scriptSrc: string, config: any, height?: string }) => {
   const container = useRef<HTMLDivElement>(null);
-  const isFirstRender = useRef(true);
 
   useEffect(() => {
-    if (container.current && isFirstRender.current) {
-      isFirstRender.current = false;
-      const script = document.createElement('script');
-      script.src = scriptSrc;
-      script.type = 'text/javascript';
-      script.async = true;
-      script.innerHTML = JSON.stringify(config);
-      container.current.appendChild(script);
-    }
-  }, [scriptSrc, config]);
+    const currentContainer = container.current;
+    if (!currentContainer) return;
+
+    // Limpeza prévia para evitar duplicatas e "consumer expired"
+    currentContainer.innerHTML = '';
+    
+    // Criação do container interno para o widget
+    const widgetDiv = document.createElement('div');
+    widgetDiv.className = 'tradingview-widget-container__widget';
+    widgetDiv.style.height = '100%';
+    widgetDiv.style.width = '100%';
+    currentContainer.appendChild(widgetDiv);
+
+    const script = document.createElement('script');
+    script.src = scriptSrc;
+    script.type = 'text/javascript';
+    script.async = true;
+    script.innerHTML = JSON.stringify(config);
+    
+    currentContainer.appendChild(script);
+
+    return () => {
+      if (currentContainer) {
+        currentContainer.innerHTML = '';
+      }
+    };
+  }, [scriptSrc, JSON.stringify(config)]);
 
   return (
-    <div className="tradingview-widget-container w-full h-full min-h-[inherit]" ref={container}>
-      <div className="tradingview-widget-container__widget h-full w-full"></div>
+    <div 
+      className="tradingview-widget-container w-full h-full min-h-[inherit]" 
+      ref={container}
+    >
+      {/* O widget será injetado aqui pelo useEffect */}
     </div>
   );
 };
