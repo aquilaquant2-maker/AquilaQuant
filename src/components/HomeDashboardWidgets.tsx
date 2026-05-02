@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { SUPPORTED_ASSETS } from '../constants/assets';
 
 const TradingViewEmbed = ({ scriptSrc, config }: { scriptSrc: string, config: any }) => {
   const container = useRef<HTMLDivElement>(null);
@@ -69,34 +70,22 @@ export const HomeDashboardWidgets = () => {
               "symbolActiveColor": "rgba(41, 98, 255, 0.12)",
               "tabs": [
                 {
-                  "title": "Forex",
-                  "symbols": [
-                    { "s": "FX:EURUSD", "d": "EUR to USD" },
-                    { "s": "FX:GBPUSD", "d": "GBP to USD" },
-                    { "s": "FX:USDJPY", "d": "USD to JPY" },
-                    { "s": "FX:USDCHF", "d": "USD to CHF" },
-                    { "s": "FX:AUDUSD", "d": "AUD to USD" },
-                    { "s": "FX:USDCAD", "d": "USD to CAD" },
-                    { "s": "OANDA:XAUUSD", "d": "XAU to USD" },
-                    { "s": "OANDA:NZDUSD", "d": "NZD to USD" },
-                    { "s": "OANDA:EURJPY", "d": "EUR to JPY" },
-                    { "s": "OANDA:GBPJPY", "d": "GBP to JPY" }
-                  ],
-                  "originalTitle": "Forex"
+                  "title": "B3",
+                  "symbols": SUPPORTED_ASSETS
+                    .filter(a => a.type === 'B3')
+                    .map(a => ({ "s": a.tradingViewSymbol, "d": a.nameFull }))
                 },
                 {
-                  "title": "B3",
-                  "symbols": [
-                    { "s": "BMFBOVESPA:WDO1!", "d": "Mini Dólar" },
-                    { "s": "BMFBOVESPA:WIN1!", "d": "Mini Índice" }
-                  ]
+                  "title": "Forex",
+                  "symbols": SUPPORTED_ASSETS
+                    .filter(a => a.type === 'Forex')
+                    .map(a => ({ "s": a.tradingViewSymbol, "d": a.nameFull }))
                 },
                 {
                   "title": "Crypto",
                   "symbols": [
                     { "s": "COINBASE:BTCUSD", "d": "BTC to USD" },
-                    { "s": "COINBASE:ETHUSD", "d": "ETH to USD" },
-                    { "s": "COINBASE:SOLUSD", "d": "SOL to USD" }
+                    { "s": "COINBASE:ETHUSD", "d": "ETH to USD" }
                   ]
                 }
               ],
@@ -125,33 +114,22 @@ export const HomeDashboardWidgets = () => {
               "height": "100%",
               "symbolsGroups": [
                 {
-                  "name": "Forex",
-                  "symbols": [
-                    { "name": "FX:EURUSD", "displayName": "EUR to USD" },
-                    { "name": "FX:GBPUSD", "displayName": "GBP to USD" },
-                    { "name": "FX:USDJPY", "displayName": "USD to JPY" },
-                    { "name": "FX:USDCHF", "displayName": "USD to CHF" },
-                    { "name": "FX:AUDUSD", "displayName": "AUD to USD" },
-                    { "name": "FX:USDCAD", "displayName": "USD to CAD" },
-                    { "name": "OANDA:XAUUSD", "displayName": "XAU to USD" },
-                    { "name": "OANDA:NZDUSD", "displayName": "NZD to USD" },
-                    { "name": "OANDA:EURJPY", "displayName": "EUR to JPY" },
-                    { "name": "OANDA:GBPJPY", "displayName": "GBP to JPY" }
-                  ]
+                  "name": "B3",
+                  "symbols": SUPPORTED_ASSETS
+                    .filter(a => a.type === 'B3')
+                    .map(a => ({ "name": a.tradingViewSymbol, "displayName": a.nameFull }))
                 },
                 {
-                  "name": "B3",
-                  "symbols": [
-                    { "name": "BMFBOVESPA:WDO1!", "displayName": "Mini Dólar" },
-                    { "name": "BMFBOVESPA:WIN1!", "displayName": "Mini Índice" }
-                  ]
+                  "name": "Forex",
+                  "symbols": SUPPORTED_ASSETS
+                    .filter(a => a.type === 'Forex')
+                    .map(a => ({ "name": a.tradingViewSymbol, "displayName": a.nameFull }))
                 },
                 {
                   "name": "Crypto",
                   "symbols": [
                     { "name": "COINBASE:BTCUSD", "displayName": "BTC to USD" },
-                    { "name": "COINBASE:ETHUSD", "displayName": "ETH to USD" },
-                    { "name": "COINBASE:SOLUSD", "displayName": "SOL to USD" }
+                    { "name": "COINBASE:ETHUSD", "displayName": "ETH to USD" }
                   ]
                 }
               ]

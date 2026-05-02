@@ -531,9 +531,9 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
             {[
-              { title: 'Relatório B3', price: '497', monthly: '41', highlight: false, features: ['Regiões Exaustão B3', 'Frequência 45D B3', 'Smart Money Flow', 'Suporte VIP'] },
-              { title: 'B3 + Forex (Elite)', price: '697', monthly: '58', highlight: true, promo: '30% OFF', oldPrice: '997', features: ['Tudo Incluído B3', 'Tudo Incluído Forex', 'Prioridade nos Sinais', 'Calls Mensais', 'Suporte Ultra-VIP'] },
-              { title: 'Relatório Forex', price: '497', monthly: '41', highlight: false, features: ['Regiões Exaustão FX', 'Frequência 45D FX', 'Smart Money Flow', 'Suporte VIP'] },
+              { title: 'Relatório B3', price: '497', monthly: '41', highlight: false, features: ['Regiões para mini dólar', 'Regiões para mini índice', 'Dashboard + indicadores', 'Suporte VIP'] },
+              { title: 'B3 + Forex (Elite)', price: '697', monthly: '58', highlight: true, promo: '30% OFF', oldPrice: '997', features: ['Regiões para mini dólar', 'Regiões para mini índice', 'Regiões para Forex', 'Dashboard + indicadores', 'Suporte Ultra-VIP', 'Comunidade Discord', 'Treinamento gravado'] },
+              { title: 'Relatório Forex', price: '497', monthly: '41', highlight: false, features: ['Regiões para Forex', 'Dashboard + indicadores', 'Suporte VIP'] },
             ].map((plan, i) => (
               <div key={i} className={cn(
                 "glass-card rounded-[2.5rem] p-8 border transition-all relative overflow-hidden flex flex-col",

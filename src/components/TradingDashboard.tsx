@@ -35,6 +35,7 @@ import {
 import { XAUUSDWidgets } from './XAUUSDWidgets';
 import { supabase } from '../lib/supabaseClient';
 import { roundToHalf } from '../lib/quantEngine';
+import { SUPPORTED_ASSETS } from '../constants/assets';
 
 interface TradingDashboardProps {
   assetName: string;
@@ -102,14 +103,6 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
 
   const handleCalculate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const today = new Date();
-    const selectedDate = new Date(date);
-    
-    if (selectedDate > today) {
-      setShowError(true);
-      return;
-    }
-    
     setShowError(false);
     setIsLoading(true);
     setCalcError(null);
@@ -136,23 +129,9 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
         throw new Error('O valor de abertura deve ser um número válido (Ex: 4.974,00 ou 5250.50)');
       }
 
-      // 2. Normalização do Símbolo
-      let normalizedSymbol = assetCode.replace(/\s+/g, '').toUpperCase();
-      
-      // Mapeamento de sinonimos comuns
-      const symbolMap: Record<string, string> = {
-        'EURO/DÓLAR': 'EURUSD',
-        'OURO': 'XAUUSD',
-        'XAU/USD': 'XAUUSD',
-        'WIN': 'WIN',
-        'WDO': 'WDO'
-      };
+      const normalizedSymbol = assetCode.trim().toUpperCase();
 
-      if (symbolMap[normalizedSymbol]) {
-        normalizedSymbol = symbolMap[normalizedSymbol];
-      }
-
-      console.log(`AQUILA QUANT [Calculo]: Processando ${normalizedSymbol} (Original: ${assetCode})`);
+      console.log(`AQUILA QUANT [Calculo]: Processando ${normalizedSymbol}`);
 
       let finalData = null;
 
@@ -227,7 +206,9 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
             frequency: {
               a: y / 2,        // Frequência A (Y/2)
               b: y,            // Volatilidade Y
-              mean_b: b        // Média Estatística B
+              mean_b: b,       // Média Estatística B
+              f1: metrics.freq_1_value || 0,
+              f2: metrics.freq_2_value || 0
             }
           },
           stops: {
@@ -275,16 +256,10 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
                 <input 
                   type="date" 
                   value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm font-bold text-white outline-none focus:ring-1 focus:ring-trading-green/30 transition-all uppercase"
+                  disabled
+                  className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm font-bold text-white outline-none transition-all uppercase opacity-50 cursor-not-allowed"
                 />
               </div>
-              {showError && (
-                <div className="flex items-center gap-2 mt-2 px-1 text-trading-red">
-                  <AlertCircle className="w-3 h-3" />
-                  <span className="text-[10px] font-black uppercase tracking-tight">Data futura não permitida! Selecione hoje ou dias passados.</span>
-                </div>
-              )}
             </div>
 
             <div className="space-y-2">
@@ -417,12 +392,17 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
                 { label: '4.0 Desvio (DOWN)', val: metricsData?.quant_analysis?.regions?.major_down[3], sub: metricsData?.quant_analysis?.regions?.intermediate_down[3] },
               ].map((item, i) => (
                 <div key={i} className="p-5 rounded-3xl bg-white/[0.02] border border-white/5 text-center group hover:border-trading-green/20 transition-all">
-                  <p className="text-[9px] font-black text-zinc-600 uppercase mb-2 tracking-tighter">{item.label}</p>
                   <p className="text-xl font-black text-white">
-                    {item.val?.toLocaleString('pt-BR', { minimumFractionDigits: category === 'B3' ? 1 : 5 })}
+                    {item.val?.toLocaleString('pt-BR', { 
+                      minimumFractionDigits: 1,
+                      maximumFractionDigits: category === 'B3' ? 2 : 5
+                    })}
                   </p>
                   <p className="text-[10px] font-bold text-zinc-500 mt-1">
-                    {item.sub?.toLocaleString('pt-BR', { minimumFractionDigits: category === 'B3' ? 1 : 5 })}
+                    {item.sub?.toLocaleString('pt-BR', { 
+                      minimumFractionDigits: 1,
+                      maximumFractionDigits: category === 'B3' ? 2 : 5
+                    })}
                   </p>
                 </div>
               ))}
@@ -442,10 +422,16 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
                     <TrendingUp className="w-10 h-10 text-trading-green opacity-20" />
                     <div className="space-y-1">
                        <p className="text-xl font-black text-white">
-                         {metricsData?.quant_analysis?.extreme?.max[0]?.toLocaleString('pt-BR', { minimumFractionDigits: category === 'B3' ? 1 : 5, maximumFractionDigits: 2 })}
+                         {metricsData?.quant_analysis?.extreme?.max[0]?.toLocaleString('pt-BR', { 
+                           minimumFractionDigits: 1, 
+                           maximumFractionDigits: category === 'B3' ? 2 : 5 
+                         })}
                        </p>
                        <p className="text-[10px] font-bold text-zinc-500">
-                         {metricsData?.quant_analysis?.extreme?.max[1]?.toLocaleString('pt-BR', { minimumFractionDigits: category === 'B3' ? 1 : 5, maximumFractionDigits: 2 })}
+                         {metricsData?.quant_analysis?.extreme?.max[1]?.toLocaleString('pt-BR', { 
+                           minimumFractionDigits: 1, 
+                           maximumFractionDigits: category === 'B3' ? 2 : 5 
+                         })}
                        </p>
                     </div>
                  </div>
@@ -453,10 +439,16 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
                     <TrendingDown className="w-10 h-10 text-trading-red opacity-20" />
                     <div className="space-y-1">
                        <p className="text-xl font-black text-white">
-                         {metricsData?.quant_analysis?.extreme?.min[0]?.toLocaleString('pt-BR', { minimumFractionDigits: category === 'B3' ? 1 : 5, maximumFractionDigits: 2 })}
+                         {metricsData?.quant_analysis?.extreme?.min[0]?.toLocaleString('pt-BR', { 
+                           minimumFractionDigits: 1, 
+                           maximumFractionDigits: category === 'B3' ? 2 : 5 
+                         })}
                        </p>
                        <p className="text-[10px] font-bold text-zinc-500">
-                         {metricsData?.quant_analysis?.extreme?.min[1]?.toLocaleString('pt-BR', { minimumFractionDigits: category === 'B3' ? 1 : 5, maximumFractionDigits: 2 })}
+                         {metricsData?.quant_analysis?.extreme?.min[1]?.toLocaleString('pt-BR', { 
+                           minimumFractionDigits: 1, 
+                           maximumFractionDigits: category === 'B3' ? 2 : 5 
+                         })}
                        </p>
                     </div>
                  </div>
@@ -470,20 +462,31 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
                   <div className="w-2 h-2 bg-trading-green rounded-full shadow-[0_0_8px_rgba(0,255,157,0.6)]" />
                   <h3 className="text-sm font-black uppercase tracking-widest text-white">Frequência Estatística</h3>
                 </div>
-                <div className="flex items-center justify-around">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-center">
                    <div className="text-center">
                       <p className="text-2xl font-black text-white">
                         {metricsData?.quant_analysis?.frequency?.b?.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
                       </p>
-                      <p className="text-[9px] font-black text-zinc-600 uppercase mt-1">Volatilidade (Y)</p>
                    </div>
-                   <div className="w-px h-12 bg-white/5" />
                    <div className="text-center">
                       <p className="text-2xl font-black text-white">
                         {metricsData?.quant_analysis?.frequency?.mean_b?.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
                       </p>
-                      <p className="text-[9px] font-black text-zinc-600 uppercase mt-1">Média X (B)</p>
                    </div>
+                   {category === 'B3' && (
+                     <>
+                       <div className="text-center">
+                          <p className="text-2xl font-black text-trading-green">
+                            {(metricsData?.quant_analysis?.frequency?.f1 || 0).toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
+                          </p>
+                       </div>
+                       <div className="text-center">
+                          <p className="text-2xl font-black text-trading-green">
+                            {(metricsData?.quant_analysis?.frequency?.f2 || 0).toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
+                          </p>
+                       </div>
+                     </>
+                   )}
                 </div>
              </div>
            ) : (
@@ -679,10 +682,14 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
         )}
       </div>
 
-      {/* TradingView Widgets for XAUUSD */}
-      {assetCode === 'XAU / USD' && (
-        <XAUUSDWidgets symbol="OANDA:XAUUSD" />
-      )}
+      {/* TradingView Widgets for Assets with specific TV Symbols */}
+      {(() => {
+        const asset = SUPPORTED_ASSETS.find(a => a.symbol === assetCode);
+        if (asset && asset.tradingViewSymbol && asset.type === 'Forex') {
+          return <XAUUSDWidgets symbol={asset.tradingViewSymbol} />;
+        }
+        return null;
+      })()}
 
     </div>
   );

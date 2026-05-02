@@ -28,21 +28,33 @@ export const processQuantFile = (file: File, targetDate?: string): Promise<{ y_v
         if (!csvText) throw new Error("Arquivo vazio.");
 
         const lines = csvText.trim().split('\n');
+        if (lines.length < 3) throw new Error("Arquivo com dados insuficientes.");
+
+        /**
+         * Identificação do Tipo de Planilha
+         */
+        const header = lines[0].toUpperCase();
+        const isMT5 = header.includes('<DATE>') || header.includes('<OPEN>') || header.includes('<HIGH>');
+        
         // Pulo de Linhas (Offset): Ignora Cabeçalho (L1) e Pregão Atual (L2)
         const dataLines = lines.slice(2).filter(l => l.trim() !== '');
 
         /**
-         * Robust CSV Parser [Respects Quotes & Commas]
+         * Robust CSV Parser [Respects Tabs, Quotes & Commas]
          */
         const getCols = (line: string) => {
+          if (isMT5 && line.includes('\t')) return line.split('\t');
+          
           const result = [];
           let current = '';
           let inQuotes = false;
+          const delimiter = line.includes(';') ? ';' : ',';
+          
           for (let i = 0; i < line.length; i++) {
             const char = line[i];
             if (char === '"') {
               inQuotes = !inQuotes;
-            } else if ((char === ',' || char === ';') && !inQuotes) {
+            } else if (char === delimiter && !inQuotes) {
               result.push(current);
               current = '';
             } else {
@@ -54,13 +66,24 @@ export const processQuantFile = (file: File, targetDate?: string): Promise<{ y_v
         };
 
         /**
+         * Mapping de Colunas por Tipo
+         * B3: Abertura (2), Máxima (3)
+         * MT5: <OPEN> (1), <HIGH> (2)
+         */
+        const colMap = isMT5 
+          ? { date: 0, open: 1, high: 2 } 
+          : { date: 0, open: 2, high: 3 };
+
+        console.log(`AQUILA QUANT [Detector]: Tipo detectado: ${isMT5 ? 'MT5/Forex' : 'B3/Brasileira'}`);
+
+        /**
          * 1. Preparação dos Dados: Parse e Ordenação (DNA Pandas)
          */
         const parsedData = dataLines.map((line) => {
           const cols = getCols(line);
           
-          // Parse da Data robusto (Suporta DD/MM/YYYY e YYYY-MM-DD)
-          const dateStr = cols[0].replace(/"/g, '').trim();
+          // Parse da Data robusto (Suporta DD/MM/YYYY, YYYY-MM-DD e YYYY.MM.DD)
+          const dateStr = cols[colMap.date].replace(/"/g, '').trim();
           let timestamp = NaN;
           
           if (dateStr.includes('/')) {
@@ -69,11 +92,19 @@ export const processQuantFile = (file: File, targetDate?: string): Promise<{ y_v
           } else if (dateStr.includes('-')) {
             const [y, m, d] = dateStr.split('-').map(n => parseInt(n));
             timestamp = new Date(y, m - 1, d).getTime();
+          } else if (dateStr.includes('.')) {
+            const [y, m, d] = dateStr.split('.').map(n => parseInt(n));
+            timestamp = new Date(y, m - 1, d).getTime();
           }
 
           const clean = (s: string | undefined) => {
             if (!s) return NaN;
             let val = s.replace(/"/g, '').trim();
+            
+            if (isMT5) {
+              return parseFloat(val); // MT5 usa ponto decimal simples
+            }
+
             // Lógica B3/Brasil: 4.974,00 ou 4.974
             if (val.includes(',') && val.includes('.')) {
                return parseFloat(val.replace(/\./g, '').replace(',', '.'));
@@ -81,7 +112,7 @@ export const processQuantFile = (file: File, targetDate?: string): Promise<{ y_v
             if (val.includes(',')) return parseFloat(val.replace(',', '.'));
             
             // Proteção para valores como 4.974 (onde o ponto é milhar)
-            if (val.includes('.') && val.length >= 5) {
+            if (val.includes('.') && val.length >= 5 && !isMT5) {
                return parseFloat(val.replace(/\./g, ''));
             }
             return parseFloat(val);
@@ -90,8 +121,8 @@ export const processQuantFile = (file: File, targetDate?: string): Promise<{ y_v
           return {
             timestamp,
             dateStr,
-            val2: clean(cols[2]), // Index 2 (Python df.columns[2]) -> 'high' literal (Abertura no CSV)
-            val3: clean(cols[3]), // Index 3 (Python df.columns[3]) -> 'low' literal (Máxima no CSV)
+            val2: clean(cols[colMap.open]), // Logicamente "Open"
+            val3: clean(cols[colMap.high]), // Logicamente "High"
           };
         })
         .filter(row => !isNaN(row.timestamp) && !isNaN(row.val2) && !isNaN(row.val3))
@@ -190,5 +221,47 @@ export const uploadAssetMetrics = async (assetSymbol: string, file: File) => {
     console.error('AQUILA QUANT [Upload Fatal]:', err.message);
     throw err;
   }
+};
+
+/**
+ * Salva métricas de ativos manualmente (B, Y e Regiões de Frequência)
+ */
+export const saveManualAssetMetrics = async (
+  assetSymbol: string, 
+  y_value: number, 
+  mean_b_value: number,
+  f1_value?: number,
+  f2_value?: number
+) => {
+  console.log(`AQUILA QUANT [Manual Save]: Salvando ${assetSymbol} -> Y: ${y_value}, B: ${mean_b_value}, F1: ${f1_value}, F2: ${f2_value}`);
+  
+  const { data, error } = await supabase
+    .from('asset_historical_metrics')
+    .upsert({
+      asset_symbol: assetSymbol,
+      y_value,
+      mean_b_value,
+      freq_1_value: f1_value || 0,
+      freq_2_value: f2_value || 0,
+      updated_at: new Date().toISOString()
+    }, { 
+      onConflict: 'asset_symbol' 
+    })
+    .select();
+
+  if (error) throw error;
+  return data;
+};
+
+/**
+ * Busca todas as métricas atuais para o painel admin
+ */
+export const getAllAssetMetrics = async () => {
+  const { data, error } = await supabase
+    .from('asset_historical_metrics')
+    .select('*');
+  
+  if (error) throw error;
+  return data;
 };
 

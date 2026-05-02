@@ -18,6 +18,7 @@ import { AdminView } from './components/AdminView';
 import { HomeDashboardWidgets } from './components/HomeDashboardWidgets';
 import { AuthModal } from './components/AuthModal';
 import { AccessGate } from './components/AccessGate';
+import { SUPPORTED_ASSETS } from './constants/assets';
 import { Bitcoin, Cpu, Zap, ChevronDown, Shield, Lock, Loader2 } from 'lucide-react';
 import { checkSupabaseConnection } from './lib/supabaseClient';
 import { useAuth } from './hooks/useAuth';
@@ -99,31 +100,7 @@ export default function App() {
       case 'RESULTS': return <ResultsGallery />;
       case 'LEADERBOARD': return <Leaderboard />;
       case 'STUDY': return <ArticlesStudy />;
-      case 'CHAT': return <LiveChat />;
-      case 'MINI_DOLAR': 
-        return (
-          <AccessGate requiredTag="B3">
-            <TradingDashboard assetName="MINI DÓLAR" assetCode="WDO / DOL" category="B3" />
-          </AccessGate>
-        );
-      case 'MINI_INDICE': 
-        return (
-          <AccessGate requiredTag="B3">
-            <TradingDashboard assetName="MINI ÍNDICE" assetCode="WIN / IND" category="B3" />
-          </AccessGate>
-        );
-      case 'EUR_USD': 
-        return (
-          <AccessGate requiredTag="Forex">
-            <TradingDashboard assetName="Euro / Dólar" assetCode="EUR / USD" category="FOREX" />
-          </AccessGate>
-        );
-      case 'XAU_USD': 
-        return (
-          <AccessGate requiredTag="Forex">
-            <TradingDashboard assetName="Ouro (Gold)" assetCode="XAU / USD" category="FOREX" />
-          </AccessGate>
-        );
+      case 'CHAT': return <LiveChat isPiP={false} onTogglePiP={() => {}} />;
       case 'CRIPTO':
         return (
           <AccessGate requiredTag="Cripto">
@@ -132,13 +109,7 @@ export default function App() {
         );
       case 'ADMIN': 
       case 'ADMIN_CLIENTS':
-      case 'ADMIN_B3_DOLAR':
-      case 'ADMIN_B3_INDICE':
-      case 'ADMIN_FOREX_XAU':
-      case 'ADMIN_FOREX_EUR':
-      case 'ADMIN_CRIPTO_BTC':
-      case 'ADMIN_CRIPTO_ETH':
-      case 'ADMIN_CRIPTO_SOL':
+      case 'ADMIN_PAIRS':
         if (!isAdmin) {
           setCurrentView('DASHBOARD');
           return <HomeDashboardWidgets />;
@@ -146,6 +117,19 @@ export default function App() {
         return <AdminView currentView={currentView} onViewChange={setCurrentView} />;
       case 'DASHBOARD':
       default:
+        // Try to find if currentView is a dynamic asset
+        const asset = SUPPORTED_ASSETS.find(a => a.view === currentView);
+        if (asset) {
+          return (
+            <AccessGate requiredTag={asset.type}>
+              <TradingDashboard 
+                assetName={asset.name} 
+                assetCode={asset.symbol} 
+                category={asset.type.toUpperCase() as any} 
+              />
+            </AccessGate>
+          );
+        }
         return <HomeDashboardWidgets />;
     }
   };

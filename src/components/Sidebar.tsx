@@ -24,6 +24,7 @@ import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { authService } from '../lib/authService';
 import { User } from '@supabase/supabase-js';
+import { SUPPORTED_ASSETS, CATEGORIES } from '../constants/assets';
 
 export const Sidebar = ({ 
   onViewChange, 
@@ -41,14 +42,11 @@ export const Sidebar = ({
   const [selectedLang, setSelectedLang] = useState({ id: 'br', flag: 'br' });
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
-    dashboards: currentView === 'DASHBOARD' || currentView === 'MINI_DOLAR' || currentView === 'MINI_INDICE' || currentView === 'XAU_USD' || currentView === 'EUR_USD',
+    dashboards: true, // Always expanded by default
     languages: false,
-    b3: currentView === 'MINI_DOLAR' || currentView === 'MINI_INDICE',
-    forex: currentView === 'XAU_USD' || currentView === 'EUR_USD',
+    b3: true,
+    forex: true,
     admin: currentView.startsWith('ADMIN'),
-    adminB3: currentView === 'ADMIN_B3_DOLAR' || currentView === 'ADMIN_B3_INDICE',
-    adminForex: currentView === 'ADMIN_FOREX_XAU' || currentView === 'ADMIN_FOREX_EUR',
-    adminCripto: currentView.startsWith('ADMIN_CRIPTO')
   });
 
   const toggleMenu = (menu: string) => {
@@ -170,81 +168,38 @@ export const Sidebar = ({
                 exit={{ height: 0, opacity: 0 }}
                 className="overflow-hidden pl-4 space-y-1 mt-1"
               >
-                {/* B3 Submenu */}
-                <div className="space-y-1">
-                  <button 
-                    onClick={() => toggleMenu('b3')}
-                    className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Monitor className="w-4 h-4" />
-                      <span>B3</span>
-                    </div>
-                    <ChevronRight className={cn("w-3.5 h-3.5 transition-transform", expandedMenus.b3 ? "rotate-90" : "")} />
-                  </button>
-                  {expandedMenus.b3 && (
-                    <div className="pl-8 space-y-1 py-1">
-                      <button 
-                        onClick={() => onViewChange('MINI_DOLAR')}
-                        className={cn(
-                          "flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors",
-                          currentView === 'MINI_DOLAR' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-trading-green hover:bg-white/5"
-                        )}
-                      >
-                        <div className={cn("w-1 h-1 rounded-full", currentView === 'MINI_DOLAR' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
-                        MINI DÓLAR
-                      </button>
-                      <button 
-                        onClick={() => onViewChange('MINI_INDICE')}
-                        className={cn(
-                          "flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors",
-                          currentView === 'MINI_INDICE' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-trading-green hover:bg-white/5"
-                        )}
-                      >
-                        <div className={cn("w-1 h-1 rounded-full", currentView === 'MINI_INDICE' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
-                        MINI ÍNDICE
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Forex Submenu */}
-                <div className="space-y-1">
-                  <button 
-                    onClick={() => toggleMenu('forex')}
-                    className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Globe className="w-4 h-4" />
-                      <span>Forex</span>
-                    </div>
-                    <ChevronRight className={cn("w-3.5 h-3.5 transition-transform", expandedMenus.forex ? "rotate-90" : "")} />
-                  </button>
-                  {expandedMenus.forex && (
-                    <div className="pl-8 space-y-1 py-1">
-                      <button 
-                        onClick={() => onViewChange('XAU_USD')}
-                        className={cn(
-                          "flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors",
-                          currentView === 'XAU_USD' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-trading-green hover:bg-white/5"
-                        )}
-                      >
-                        <div className={cn("w-1 h-1 rounded-full", currentView === 'XAU_USD' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
-                        XAU/USD
-                      </button>
-                      <button 
-                        onClick={() => onViewChange('EUR_USD')}
-                        className={cn(
-                          "flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors",
-                          currentView === 'EUR_USD' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-trading-green hover:bg-white/5"
-                        )}
-                      >
-                        <div className={cn("w-1 h-1 rounded-full", currentView === 'EUR_USD' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
-                        EUR/USD
-                      </button>
-                    </div>
-                  )}
-                </div>
+                {/* Dynamic Asset Submenus */}
+                {CATEGORIES.filter(cat => cat !== 'Cripto').map(category => (
+                  <div key={category} className="space-y-1">
+                    <button 
+                      onClick={() => toggleMenu(category.toLowerCase())}
+                      className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors group"
+                    >
+                      <div className="flex items-center gap-3">
+                        {category === 'B3' ? <Monitor className="w-4 h-4" /> : <Globe className="w-4 h-4" />}
+                        <span>{category}</span>
+                      </div>
+                      <ChevronRight className={cn("w-3.5 h-3.5 transition-transform", expandedMenus[category.toLowerCase()] ? "rotate-90" : "")} />
+                    </button>
+                    {expandedMenus[category.toLowerCase()] && (
+                      <div className="pl-8 space-y-1 py-1">
+                        {SUPPORTED_ASSETS.filter(a => a.type === category).map(asset => (
+                          <button 
+                            key={asset.view}
+                            onClick={() => onViewChange(asset.view)}
+                            className={cn(
+                              "flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors",
+                              currentView === asset.view ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-trading-green hover:bg-white/5"
+                            )}
+                          >
+                            <div className={cn("w-1 h-1 rounded-full", currentView === asset.view ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
+                            {asset.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
 
                 {/* Market Items - Cripto */}
                 <div 
@@ -308,88 +263,18 @@ export const Sidebar = ({
                     <Users className="w-4 h-4" />
                     <span>Clientes</span>
                   </button>
-
-                  {/* Admin B3 */}
-                  <div className="space-y-1">
-                    <button 
-                      onClick={() => toggleMenu('adminB3')}
-                      className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Monitor className="w-4 h-4" />
-                        <span>B3</span>
-                      </div>
-                      <ChevronRight className={cn("w-3.5 h-3.5 transition-transform", expandedMenus.adminB3 ? "rotate-90" : "")} />
-                    </button>
-                    {expandedMenus.adminB3 && (
-                      <div className="pl-8 space-y-1 py-1">
-                        <button onClick={() => onViewChange('ADMIN_B3_DOLAR')} className={cn("flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors", currentView === 'ADMIN_B3_DOLAR' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5")}>
-                          <div className={cn("w-1 h-1 rounded-full", currentView === 'ADMIN_B3_DOLAR' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
-                          MINI DÓLAR
-                        </button>
-                        <button onClick={() => onViewChange('ADMIN_B3_INDICE')} className={cn("flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors", currentView === 'ADMIN_B3_INDICE' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5")}>
-                          <div className={cn("w-1 h-1 rounded-full", currentView === 'ADMIN_B3_INDICE' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
-                          MINI ÍNDICE
-                        </button>
-                      </div>
+                  
+                  {/* Ativos/Pares */}
+                  <button 
+                    onClick={() => onViewChange('ADMIN_PAIRS')}
+                    className={cn(
+                      "flex items-center gap-3 w-full px-4 py-2 rounded-lg text-xs font-bold transition-all",
+                      currentView === 'ADMIN_PAIRS' ? "text-white bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5"
                     )}
-                  </div>
-
-                  {/* Admin Forex */}
-                  <div className="space-y-1">
-                    <button 
-                      onClick={() => toggleMenu('adminForex')}
-                      className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Globe className="w-4 h-4" />
-                        <span>Forex</span>
-                      </div>
-                      <ChevronRight className={cn("w-3.5 h-3.5 transition-transform", expandedMenus.adminForex ? "rotate-90" : "")} />
-                    </button>
-                    {expandedMenus.adminForex && (
-                      <div className="pl-8 space-y-1 py-1">
-                        <button onClick={() => onViewChange('ADMIN_FOREX_XAU')} className={cn("flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors", currentView === 'ADMIN_FOREX_XAU' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5")}>
-                          <div className={cn("w-1 h-1 rounded-full", currentView === 'ADMIN_FOREX_XAU' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
-                          XAU/USD
-                        </button>
-                        <button onClick={() => onViewChange('ADMIN_FOREX_EUR')} className={cn("flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors", currentView === 'ADMIN_FOREX_EUR' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5")}>
-                          <div className={cn("w-1 h-1 rounded-full", currentView === 'ADMIN_FOREX_EUR' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
-                          EUR/USD
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Admin Cripto */}
-                  <div className="space-y-1">
-                    <button 
-                      onClick={() => toggleMenu('adminCripto')}
-                      className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Coins className="w-4 h-4" />
-                        <span>Cripto</span>
-                      </div>
-                      <ChevronRight className={cn("w-3.5 h-3.5 transition-transform", expandedMenus.adminCripto ? "rotate-90" : "")} />
-                    </button>
-                    {expandedMenus.adminCripto && (
-                      <div className="pl-8 space-y-1 py-1">
-                        <button onClick={() => onViewChange('ADMIN_CRIPTO_BTC')} className={cn("flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors", currentView === 'ADMIN_CRIPTO_BTC' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5")}>
-                          <div className={cn("w-1 h-1 rounded-full", currentView === 'ADMIN_CRIPTO_BTC' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
-                          BITCOIN
-                        </button>
-                        <button onClick={() => onViewChange('ADMIN_CRIPTO_ETH')} className={cn("flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors", currentView === 'ADMIN_CRIPTO_ETH' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5")}>
-                          <div className={cn("w-1 h-1 rounded-full", currentView === 'ADMIN_CRIPTO_ETH' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
-                          ETHEREUM
-                        </button>
-                        <button onClick={() => onViewChange('ADMIN_CRIPTO_SOL')} className={cn("flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors", currentView === 'ADMIN_CRIPTO_SOL' ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5")}>
-                          <div className={cn("w-1 h-1 rounded-full", currentView === 'ADMIN_CRIPTO_SOL' ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
-                          SOLANA
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                    <span>Pares</span>
+                  </button>
                 </motion.div>
               )}
             </AnimatePresence>

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Mail, Lock, User as UserIcon, Loader2, ArrowRight, RefreshCw } from 'lucide-react';
 import { loginSchema, registerSchema, authService } from '../lib/authService';
-import { CUSTOM_STORAGE_KEY } from '../lib/supabaseClient';
 import { ZodError } from 'zod';
 import { cn } from '../lib/utils';
 
