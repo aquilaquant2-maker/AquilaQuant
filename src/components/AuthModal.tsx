@@ -119,7 +119,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
                     required
                     value={formData.fullName}
                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:border-trading-green/50 focus:outline-none transition-all placeholder:text-zinc-700"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-base md:text-sm focus:border-trading-green/50 focus:outline-none transition-all placeholder:text-zinc-700 min-h-[44px]"
                     placeholder="João Silva"
                   />
                 </div>
@@ -135,7 +135,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:border-trading-green/50 focus:outline-none transition-all placeholder:text-zinc-700"
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-base md:text-sm focus:border-trading-green/50 focus:outline-none transition-all placeholder:text-zinc-700 min-h-[44px]"
                   placeholder="seu@email.com"
                 />
               </div>
@@ -150,7 +150,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
                   required
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:border-trading-green/50 focus:outline-none transition-all placeholder:text-zinc-700"
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-base md:text-sm focus:border-trading-green/50 focus:outline-none transition-all placeholder:text-zinc-700 min-h-[44px]"
                   placeholder="••••••••"
                 />
               </div>
@@ -161,11 +161,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
                 <input
                   type="checkbox"
                   id="remember"
-                  className="w-4 h-4 rounded border-white/10 bg-white/5 text-trading-green focus:ring-0 focus:ring-offset-0 transition-all cursor-pointer"
+                  className="w-5 h-5 md:w-4 md:h-4 rounded border-white/10 bg-white/5 text-trading-green focus:ring-0 focus:ring-offset-0 transition-all cursor-pointer"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
                 />
-                <label htmlFor="remember" className="text-[10px] font-black uppercase tracking-widest text-zinc-500 cursor-pointer select-none hover:text-zinc-300 transition-colors">
+                <label htmlFor="remember" className="text-[10px] font-black uppercase tracking-widest text-zinc-500 cursor-pointer select-none hover:text-zinc-300 transition-colors min-h-[44px] flex items-center">
                   Lembrar desta sessão
                 </label>
               </div>
@@ -191,7 +191,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMo
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-4 bg-trading-green text-black rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg shadow-trading-green/20 hover:scale-[1.02] active:scale-98 transition-all disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2"
+              className="w-full py-4 bg-trading-green text-black rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg shadow-trading-green/20 hover:scale-[1.02] active:scale-98 transition-all disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2 min-h-[44px]"
             >
               {isLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

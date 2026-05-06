@@ -170,6 +170,7 @@ export const AdminView = ({ currentView, onViewChange }: AdminViewProps) => {
                        <th className="px-4 py-5 text-[10px] font-black uppercase tracking-widest text-zinc-500 text-center">Y (Volatilidade)</th>
                        <th className="px-4 py-5 text-[10px] font-black uppercase tracking-widest text-zinc-500 text-center">F1 (Freq)</th>
                        <th className="px-4 py-5 text-[10px] font-black uppercase tracking-widest text-zinc-500 text-center">F2 (Freq)</th>
+                       <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-zinc-500 text-center whitespace-nowrap">Última Att</th>
                        <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-zinc-500 text-right">Ação</th>
                     </tr>
                  </thead>
@@ -178,6 +179,7 @@ export const AdminView = ({ currentView, onViewChange }: AdminViewProps) => {
                       const values = manualValues[asset.symbol] || { b: '', y: '', f1: '', f2: '' };
                       const status = uploadStatus?.asset === asset.symbol ? uploadStatus : null;
                       const isB3 = asset.type === 'B3';
+                      const metric = assetMetrics.find(m => m.asset_symbol === asset.symbol);
                       
                       return (
                         <tr key={asset.symbol} className="hover:bg-white/[0.02] transition-colors group">
@@ -252,6 +254,22 @@ export const AdminView = ({ currentView, onViewChange }: AdminViewProps) => {
                                      "w-16 bg-[#0a0a0c] border border-white/10 rounded-lg px-2 py-2 text-xs font-black text-center text-white focus:outline-none focus:border-trading-green/50 transition-all shadow-inner disabled:opacity-20 disabled:cursor-not-allowed"
                                    )}
                                  />
+                              </div>
+                           </td>
+                           <td className="px-6 py-5">
+                              <div className="flex flex-col items-center gap-0.5 min-w-[80px]">
+                                 {metric?.updated_at ? (
+                                   <>
+                                     <span className="text-[10px] font-black text-white leading-none">
+                                       {new Date(metric.updated_at).toLocaleDateString('pt-BR')}
+                                     </span>
+                                     <span className="text-[8px] font-bold text-zinc-600 uppercase">
+                                       {new Date(metric.updated_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                     </span>
+                                   </>
+                                 ) : (
+                                   <span className="text-[9px] font-bold text-zinc-700 uppercase tracking-widest">---</span>
+                                 )}
                               </div>
                            </td>
                            <td className="px-8 py-5 text-right">

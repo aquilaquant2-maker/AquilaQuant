@@ -2,7 +2,7 @@ export interface Asset {
   symbol: string;
   name: string;
   nameFull: string;
-  type: 'B3' | 'Forex' | 'Cripto';
+  type: 'B3' | 'Forex';
   view: string;
   tradingViewSymbol: string;
 }
@@ -106,4 +106,4 @@ export const SUPPORTED_ASSETS: Asset[] = [
   },
 ];
 
-export const CATEGORIES = ['B3', 'Forex', 'Cripto'] as const;
+export const CATEGORIES = ['B3', 'Forex'] as const;

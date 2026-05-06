@@ -166,7 +166,7 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
           .maybeSingle();
 
         if (mError || !metrics) {
-          throw new Error('Métricas não encontradas para ' + assetCode + '. O Admin deve subir o histórico de pips/ticks antes de calcular.');
+          throw new Error('Tente novamente mais tarde');
         }
 
         const y = metrics.y_value;
@@ -230,11 +230,11 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
 
   if (step === 'input') {
     return (
-      <div className="flex-1 flex items-center justify-center p-8 bg-transparent">
+      <div className="flex-1 flex items-center justify-center p-4 md:p-8 bg-transparent pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card w-full max-w-xl rounded-[2.5rem] p-10 border border-white/5 bg-white/[0.01] relative overflow-hidden"
+          className="glass-card w-full max-w-xl rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 border border-white/5 bg-white/[0.01] relative overflow-hidden"
         >
           {/* Background decoration */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-trading-green/5 blur-[100px] -z-10 rounded-full" />
@@ -257,7 +257,7 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
                   type="date" 
                   value={date}
                   disabled
-                  className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm font-bold text-white outline-none transition-all uppercase opacity-50 cursor-not-allowed"
+                  className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-base md:text-sm font-bold text-white outline-none transition-all uppercase opacity-50 cursor-not-allowed min-h-[44px]"
                 />
               </div>
             </div>
@@ -279,7 +279,7 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
                 value={opening}
                 onChange={(e) => setOpening(e.target.value)}
                 placeholder="Ex: 5.250,50"
-                className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 px-6 text-sm font-bold text-white outline-none focus:ring-1 focus:ring-trading-green/30 transition-all placeholder:text-zinc-700"
+                className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 px-6 text-base md:text-sm font-bold text-white outline-none focus:ring-1 focus:ring-trading-green/30 transition-all placeholder:text-zinc-700 min-h-[44px]"
                 required
                 disabled={isLoading}
               />
@@ -315,37 +315,39 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
 
   // --- RESULTS VIEW ---
   return (
-    <div className="flex-1 overflow-y-auto scrollbar-hide p-8 max-w-[1600px] mx-auto w-full space-y-8 animate-in fade-in duration-700">
+    <div className="flex-1 overflow-y-auto scrollbar-hide p-4 md:p-8 max-w-[1600px] mx-auto w-full space-y-6 md:space-y-8 animate-in fade-in duration-700 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       
       {/* Box Superior */}
-      <div className="glass-card rounded-[2.5rem] p-8 border border-white/5 bg-white/[0.01] flex flex-col md:flex-row items-center justify-between gap-6">
-         <div className="flex items-center gap-6">
+      <div className="glass-card rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 border border-white/5 bg-white/[0.01] flex flex-col md:flex-row items-center justify-between gap-6">
+         <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 text-center md:text-left">
             <div className="w-16 h-16 bg-trading-green/10 rounded-3xl flex items-center justify-center border border-trading-green/20 relative">
                <Zap className="w-8 h-8 text-trading-green fill-trading-green/20" />
                <div className="absolute -top-1 -right-1 w-3 h-3 bg-trading-green rounded-full shadow-[0_0_10px_rgba(0,255,157,1)]" />
             </div>
-            <div>
-               <div className="flex items-center gap-3">
-                 <h2 className="text-3xl font-black uppercase tracking-tighter text-white">{assetName}</h2>
+            <div className="flex flex-col items-center md:items-start">
+               <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3">
+                 <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter text-white">{assetName}</h2>
                  <span className="px-3 py-1 bg-white/5 rounded-lg border border-white/10 text-[10px] font-black text-zinc-400">{assetCode}</span>
                </div>
-               <div className="flex items-center gap-2 mt-1">
-                 <Calendar className="w-3.5 h-3.5 text-zinc-500" />
-                 <span className="text-xs font-bold text-zinc-500">{date.split('-').reverse().join('/')}</span>
-                 <span className="text-zinc-700 mx-2">•</span>
+               <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mt-2 md:mt-1">
+                 <div className="flex items-center gap-2">
+                   <Calendar className="w-3.5 h-3.5 text-zinc-500" />
+                   <span className="text-xs font-bold text-zinc-500">{date.split('-').reverse().join('/')}</span>
+                 </div>
+                 <span className="hidden md:inline text-zinc-700">•</span>
                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Abertura: <span className="text-white">{opening}</span></p>
                </div>
             </div>
          </div>
 
-         <div className="flex items-center gap-3">
+         <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
             <button 
               onClick={() => setStep('input')}
-              className="px-5 py-2.5 glass-button rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-white/10 transition-all border border-white/10"
+              className="w-full sm:w-auto px-5 py-4 md:py-2.5 glass-button rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-white/10 transition-all border border-white/10 min-h-[44px]"
             >
               <Edit3 className="w-3.5 h-3.5" /> Editar Dados
             </button>
-            <button className="px-5 py-2.5 glass-button rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-white/10 transition-all border border-white/10">
+            <button className="w-full sm:w-auto px-5 py-4 md:py-2.5 glass-button rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-white/10 transition-all border border-white/10 min-h-[44px]">
               <RefreshCw className="w-3.5 h-3.5" /> Atualizar
             </button>
          </div>
@@ -355,50 +357,49 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* Left Card: Desvio Padrão */}
-        <div className="lg:col-span-8 glass-card rounded-[2.5rem] p-8 border border-white/5 bg-white/[0.01]">
-           <div className="flex items-center justify-between mb-8">
+        <div className="lg:col-span-8 glass-card rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 border border-white/5 bg-white/[0.01]">
+           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
               <div className="flex items-center gap-3">
                 <div className="w-2 h-2 bg-trading-green rounded-full shadow-[0_0_8px_rgba(0,255,157,0.6)]" />
-                <h3 className="text-sm font-black uppercase tracking-widest text-white">Desvio Padrão (Regions)</h3>
+                <h3 className="text-sm font-black uppercase tracking-widest text-white">Pontos de reversão (compra/venda)</h3>
               </div>
               {category === 'B3' && (
-                <div className="flex items-center gap-8">
-                   <div className="flex flex-col items-end">
+                <div className="flex items-center gap-6 sm:gap-8">
+                   <div className="flex flex-col items-start sm:items-end">
                       <span className="text-[9px] font-black text-zinc-500 uppercase">Gain</span>
-                      <span className="text-lg font-black text-trading-green leading-none">
-                        {metricsData?.quant_analysis?.risk_management?.stop_gain?.max?.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
+                      <span className="text-base md:text-lg font-black text-trading-green leading-none">
+                        {metricsData?.quant_analysis?.frequency?.mean_b?.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
                       </span>
                    </div>
-                   <div className="flex flex-col items-end">
+                   <div className="flex flex-col items-start sm:items-end">
                       <span className="text-[9px] font-black text-zinc-500 uppercase">Loss</span>
-                      <span className="text-lg font-black text-trading-red leading-none">
-                        {metricsData?.quant_analysis?.risk_management?.stop_loss?.max?.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
+                      <span className="text-base md:text-lg font-black text-trading-red leading-none">
+                        {metricsData?.quant_analysis?.frequency?.b?.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
                       </span>
                    </div>
                 </div>
               )}
-
            </div>
 
-           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
               {[
-                { label: '1.0 Desvio (UP)', val: metricsData?.quant_analysis?.regions?.major_up[0], sub: metricsData?.quant_analysis?.regions?.intermediate_up[0] },
-                { label: '2.0 Desvio (UP)', val: metricsData?.quant_analysis?.regions?.major_up[1], sub: metricsData?.quant_analysis?.regions?.intermediate_up[1] },
-                { label: '3.0 Desvio (UP)', val: metricsData?.quant_analysis?.regions?.major_up[2], sub: metricsData?.quant_analysis?.regions?.intermediate_up[2] },
-                { label: '4.0 Desvio (UP)', val: metricsData?.quant_analysis?.regions?.major_up[3], sub: metricsData?.quant_analysis?.regions?.intermediate_up[3] },
-                { label: '1.0 Desvio (DOWN)', val: metricsData?.quant_analysis?.regions?.major_down[0], sub: metricsData?.quant_analysis?.regions?.intermediate_down[0] },
-                { label: '2.0 Desvio (DOWN)', val: metricsData?.quant_analysis?.regions?.major_down[1], sub: metricsData?.quant_analysis?.regions?.intermediate_down[1] },
-                { label: '3.0 Desvio (DOWN)', val: metricsData?.quant_analysis?.regions?.major_down[2], sub: metricsData?.quant_analysis?.regions?.intermediate_down[2] },
-                { label: '4.0 Desvio (DOWN)', val: metricsData?.quant_analysis?.regions?.major_down[3], sub: metricsData?.quant_analysis?.regions?.intermediate_down[3] },
+                { label: '1.0 Desvio (UP)', val: metricsData?.quant_analysis?.regions?.major_up?.[0], sub: metricsData?.quant_analysis?.regions?.intermediate_up?.[0] },
+                { label: '2.0 Desvio (UP)', val: metricsData?.quant_analysis?.regions?.major_up?.[1], sub: metricsData?.quant_analysis?.regions?.intermediate_up?.[1] },
+                { label: '3.0 Desvio (UP)', val: metricsData?.quant_analysis?.regions?.major_up?.[2], sub: metricsData?.quant_analysis?.regions?.intermediate_up?.[2] },
+                { label: '4.0 Desvio (UP)', val: metricsData?.quant_analysis?.regions?.major_up?.[3], sub: metricsData?.quant_analysis?.regions?.intermediate_up?.[3] },
+                { label: '1.0 Desvio (DOWN)', val: metricsData?.quant_analysis?.regions?.major_down?.[0], sub: metricsData?.quant_analysis?.regions?.intermediate_down?.[0] },
+                { label: '2.0 Desvio (DOWN)', val: metricsData?.quant_analysis?.regions?.major_down?.[1], sub: metricsData?.quant_analysis?.regions?.intermediate_down?.[1] },
+                { label: '3.0 Desvio (DOWN)', val: metricsData?.quant_analysis?.regions?.major_down?.[2], sub: metricsData?.quant_analysis?.regions?.intermediate_down?.[2] },
+                { label: '4.0 Desvio (DOWN)', val: metricsData?.quant_analysis?.regions?.major_down?.[3], sub: metricsData?.quant_analysis?.regions?.intermediate_down?.[3] },
               ].map((item, i) => (
-                <div key={i} className="p-5 rounded-3xl bg-white/[0.02] border border-white/5 text-center group hover:border-trading-green/20 transition-all">
-                  <p className="text-xl font-black text-white">
+                <div key={i} className="p-4 md:p-5 rounded-2xl md:rounded-3xl bg-white/[0.02] border border-white/5 text-center group hover:border-trading-green/20 transition-all">
+                  <p className="text-lg md:text-xl font-black text-white">
                     {item.val?.toLocaleString('pt-BR', { 
                       minimumFractionDigits: 1,
                       maximumFractionDigits: category === 'B3' ? 2 : 5
                     })}
                   </p>
-                  <p className="text-[10px] font-bold text-zinc-500 mt-1">
+                  <p className="text-[9px] md:text-[10px] font-bold text-zinc-500 mt-1">
                     {item.sub?.toLocaleString('pt-BR', { 
                       minimumFractionDigits: 1,
                       maximumFractionDigits: category === 'B3' ? 2 : 5
@@ -412,40 +413,40 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
         {/* Right Column: Max/Min & Stats */}
         <div className="lg:col-span-4 flex flex-col gap-8">
            {/* Máxima & Mínima */}
-           <div className="glass-card rounded-[2.5rem] p-8 border border-white/5 bg-white/[0.01]">
+           <div className="glass-card rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 border border-white/5 bg-white/[0.01]">
               <div className="flex items-center gap-3 mb-8">
                 <div className="w-2 h-2 bg-trading-green rounded-full shadow-[0_0_8px_rgba(0,255,157,0.6)]" />
                 <h3 className="text-sm font-black uppercase tracking-widest text-white">Máxima & Mínima</h3>
               </div>
-              <div className="grid grid-cols-2 gap-8 px-2">
-                 <div className="flex items-center gap-4">
-                    <TrendingUp className="w-10 h-10 text-trading-green opacity-20" />
-                    <div className="space-y-1">
-                       <p className="text-xl font-black text-white">
-                         {metricsData?.quant_analysis?.extreme?.max[0]?.toLocaleString('pt-BR', { 
+              <div className="grid grid-cols-2 gap-4 md:gap-8 px-2">
+                 <div className="flex items-center gap-3 md:gap-4">
+                    <TrendingUp className="w-8 h-8 md:w-10 md:h-10 text-trading-green opacity-20 flex-shrink-0" />
+                    <div className="space-y-0.5 md:space-y-1">
+                       <p className="text-base md:text-xl font-black text-white leading-none">
+                         {metricsData?.quant_analysis?.extreme?.max?.[0]?.toLocaleString('pt-BR', { 
                            minimumFractionDigits: 1, 
                            maximumFractionDigits: category === 'B3' ? 2 : 5 
                          })}
                        </p>
-                       <p className="text-[10px] font-bold text-zinc-500">
-                         {metricsData?.quant_analysis?.extreme?.max[1]?.toLocaleString('pt-BR', { 
+                       <p className="text-[9px] md:text-[10px] font-bold text-zinc-500 leading-none">
+                         {metricsData?.quant_analysis?.extreme?.max?.[1]?.toLocaleString('pt-BR', { 
                            minimumFractionDigits: 1, 
                            maximumFractionDigits: category === 'B3' ? 2 : 5 
                          })}
                        </p>
                     </div>
                  </div>
-                 <div className="flex items-center gap-4">
-                    <TrendingDown className="w-10 h-10 text-trading-red opacity-20" />
-                    <div className="space-y-1">
-                       <p className="text-xl font-black text-white">
-                         {metricsData?.quant_analysis?.extreme?.min[0]?.toLocaleString('pt-BR', { 
+                 <div className="flex items-center gap-3 md:gap-4">
+                    <TrendingDown className="w-8 h-8 md:w-10 md:h-10 text-trading-red opacity-20 flex-shrink-0" />
+                    <div className="space-y-0.5 md:space-y-1">
+                       <p className="text-base md:text-xl font-black text-white leading-none">
+                         {metricsData?.quant_analysis?.extreme?.min?.[0]?.toLocaleString('pt-BR', { 
                            minimumFractionDigits: 1, 
                            maximumFractionDigits: category === 'B3' ? 2 : 5 
                          })}
                        </p>
-                       <p className="text-[10px] font-bold text-zinc-500">
-                         {metricsData?.quant_analysis?.extreme?.min[1]?.toLocaleString('pt-BR', { 
+                       <p className="text-[9px] md:text-[10px] font-bold text-zinc-500 leading-none">
+                         {metricsData?.quant_analysis?.extreme?.min?.[1]?.toLocaleString('pt-BR', { 
                            minimumFractionDigits: 1, 
                            maximumFractionDigits: category === 'B3' ? 2 : 5 
                          })}
@@ -457,55 +458,43 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
 
            {/* Frequência Estatística (B3) ou Gain/Loss (Forex) */}
            {category === 'B3' ? (
-             <div className="flex-1 glass-card rounded-[2.5rem] p-8 border border-white/5 bg-white/[0.01]">
+             <div className="flex-1 glass-card rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 border border-white/5 bg-white/[0.01]">
                 <div className="flex items-center gap-3 mb-8">
                   <div className="w-2 h-2 bg-trading-green rounded-full shadow-[0_0_8px_rgba(0,255,157,0.6)]" />
                   <h3 className="text-sm font-black uppercase tracking-widest text-white">Frequência Estatística</h3>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-center">
+                <div className="flex items-center justify-around gap-4">
                    <div className="text-center">
-                      <p className="text-2xl font-black text-white">
-                        {metricsData?.quant_analysis?.frequency?.b?.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
+                      <p className="text-3xl md:text-4xl font-black text-white">
+                        {(metricsData?.quant_analysis?.frequency?.f1 || 0).toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
                       </p>
+                      <p className="text-[10px] font-black text-trading-green uppercase mt-1">Região 1</p>
                    </div>
                    <div className="text-center">
-                      <p className="text-2xl font-black text-white">
-                        {metricsData?.quant_analysis?.frequency?.mean_b?.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
+                      <p className="text-3xl md:text-4xl font-black text-white">
+                        {(metricsData?.quant_analysis?.frequency?.f2 || 0).toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
                       </p>
+                      <p className="text-[10px] font-black text-trading-green uppercase mt-1">Região 2</p>
                    </div>
-                   {category === 'B3' && (
-                     <>
-                       <div className="text-center">
-                          <p className="text-2xl font-black text-trading-green">
-                            {(metricsData?.quant_analysis?.frequency?.f1 || 0).toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
-                          </p>
-                       </div>
-                       <div className="text-center">
-                          <p className="text-2xl font-black text-trading-green">
-                            {(metricsData?.quant_analysis?.frequency?.f2 || 0).toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
-                          </p>
-                       </div>
-                     </>
-                   )}
                 </div>
              </div>
            ) : (
-             <div className="flex-1 glass-card rounded-[2.5rem] p-8 border border-white/5 bg-white/[0.01]">
+             <div className="flex-1 glass-card rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 border border-white/5 bg-white/[0.01]">
                 <div className="flex items-center gap-3 mb-8">
                   <div className="w-2 h-2 bg-trading-green rounded-full shadow-[0_0_8px_rgba(0,255,157,0.6)]" />
                   <h3 className="text-sm font-black uppercase tracking-widest text-white">Gain & Loss Máximo</h3>
                 </div>
-                <div className="flex items-center justify-around">
+                <div className="flex items-center justify-around gap-4">
                    <div className="text-center">
-                      <p className="text-3xl font-black text-trading-green">
-                        {metricsData?.stops?.gain[1]?.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
+                      <p className="text-2xl md:text-3xl font-black text-trading-green">
+                        {metricsData?.stops?.gain?.[1]?.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
                       </p>
                       <p className="text-[9px] font-black text-zinc-600 uppercase mt-1">Gain Máximo</p>
                    </div>
                    <div className="w-px h-12 bg-white/5" />
                    <div className="text-center">
-                      <p className="text-3xl font-black text-trading-red">
-                        {metricsData?.stops?.loss[1]?.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
+                      <p className="text-2xl md:text-3xl font-black text-trading-red">
+                        {metricsData?.stops?.loss?.[1]?.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
                       </p>
                       <p className="text-[9px] font-black text-zinc-600 uppercase mt-1">Loss Máximo</p>
                    </div>
@@ -519,12 +508,12 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
       {/* Box Inferior - Performance */}
       <div className="relative">
         <div className={cn(
-          "grid grid-cols-1 lg:grid-cols-12 gap-8 transition-all duration-700",
+          "grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 transition-all duration-700",
           !performanceUnlocked ? "blur-sm opacity-50 grayscale select-none pointer-events-none" : "opacity-100 grayscale-0"
         )}>
            {/* Chart: Model A vs B Line */}
-           <div className="lg:col-span-8 glass-card rounded-[2.5rem] p-8 border border-white/5 bg-white/[0.01]">
-              <div className="flex items-center justify-between mb-8">
+           <div className="lg:col-span-8 glass-card rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 border border-white/5 bg-white/[0.01]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                  <h3 className="text-sm font-black uppercase tracking-widest text-white">Performance do modelo A x B</h3>
                  <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
@@ -537,7 +526,7 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
                     </div>
                  </div>
               </div>
-              <div className="h-[300px] w-full">
+              <div className="h-[250px] md:h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={performanceUnlocked ? mockChartData : []}>
                     <defs>
@@ -564,7 +553,7 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
            </div>
 
            {/* Metrics Grid */}
-           <div className="lg:col-span-4 grid grid-cols-2 gap-6">
+           <div className="lg:col-span-4 grid grid-cols-1 xs:grid-cols-2 gap-4 md:gap-6">
               {/* Pontos */}
               <div className="glass-card rounded-[2rem] p-6 border border-white/5 bg-white/[0.01] flex flex-col">
                  <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-6 text-center">Pontos Acumulados</h4>
@@ -641,19 +630,12 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
                  </div>
               </div>
 
-              {/* Day Probability */}
-              <div className={cn(
-                "glass-card rounded-[2rem] p-6 border flex flex-col items-center justify-center text-center",
-                randomModel === 'A' ? "bg-trading-green/10 border-trading-green/20" : "bg-trading-red/10 border-trading-red/20"
-              )}>
-                 <div className={cn(
-                   "w-12 h-12 rounded-2xl flex items-center justify-center mb-3 border shadow-lg",
-                   randomModel === 'A' ? "bg-trading-green border-trading-green text-black shadow-trading-green/20" : "bg-trading-red border-trading-red text-white shadow-trading-red/20"
-                 )}>
-                    <Target className="w-6 h-6" />
+              <div className="glass-card rounded-[1.5rem] md:rounded-[2rem] p-5 md:p-6 border border-white/5 bg-white/[0.01] flex flex-col items-center justify-center text-center group transition-all">
+                 <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center mb-3 border shadow-lg bg-white/5 border-white/10 group-hover:border-trading-green/30 transition-colors">
+                    <Target className="w-5 h-5 md:w-6 md:h-6 text-trading-green" />
                  </div>
-                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-1">Cenário Provável</p>
-                 <h5 className={cn("text-2xl font-black uppercase tracking-tighter", randomModel === 'A' ? "text-trading-green" : "text-trading-red")}>
+                 <p className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-1">Cenário Provável</p>
+                 <h5 className="text-xl md:text-2xl font-black uppercase tracking-tighter text-trading-green">
                    MODELO {randomModel}
                  </h5>
               </div>
@@ -664,17 +646,17 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
         {!performanceUnlocked && (
           <div 
             onClick={() => setPerformanceUnlocked(true)}
-            className="absolute inset-0 z-20 flex flex-col items-center justify-center cursor-pointer group"
+            className="absolute inset-0 z-20 flex flex-col items-center justify-center cursor-pointer group p-4"
           >
-             <div className="glass-card p-10 rounded-[3rem] border border-white/10 bg-white/[0.05] backdrop-blur-3xl flex flex-col items-center gap-6 group-hover:scale-105 transition-all duration-500 shadow-2xl">
-                <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10 group-hover:border-trading-green/30 transition-colors">
-                   <FileUp className="w-8 h-8 text-trading-green" />
+             <div className="glass-card p-8 md:p-10 rounded-[2.5rem] md:rounded-[3rem] border border-white/10 bg-white/[0.05] backdrop-blur-3xl flex flex-col items-center gap-6 group-hover:scale-105 transition-all duration-500 shadow-2xl w-full max-w-sm">
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10 group-hover:border-trading-green/30 transition-colors">
+                   <FileUp className="w-6 h-6 md:w-8 md:h-8 text-trading-green" />
                 </div>
                 <div className="text-center">
-                  <h3 className="text-xl font-black uppercase tracking-tighter text-white">Liberar Performance</h3>
-                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-2">Faça o upload da planilha para calcular os dados ao vivo</p>
+                  <h3 className="text-lg md:text-xl font-black uppercase tracking-tighter text-white">Liberar Performance</h3>
+                  <p className="text-[9px] md:text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-2 px-4 leading-relaxed">Faça o upload da planilha para calcular os dados ao vivo</p>
                 </div>
-                <button className="px-8 py-3 bg-trading-green text-black rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-trading-green/20 active:scale-95 transition-all">
+                <button className="w-full px-8 py-4 bg-trading-green text-black rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-trading-green/20 active:scale-95 transition-all min-h-[44px]">
                   Upload Planilha (.xlsx)
                 </button>
              </div>
@@ -685,7 +667,7 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
       {/* TradingView Widgets for Assets with specific TV Symbols */}
       {(() => {
         const asset = SUPPORTED_ASSETS.find(a => a.symbol === assetCode);
-        if (asset && asset.tradingViewSymbol && asset.type === 'Forex') {
+        if (asset && asset.tradingViewSymbol && (asset.type === 'Forex' || asset.type === 'B3')) {
           return <XAUUSDWidgets symbol={asset.tradingViewSymbol} />;
         }
         return null;

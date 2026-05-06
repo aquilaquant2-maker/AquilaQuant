@@ -69,6 +69,8 @@ CREATE TABLE public.asset_historical_metrics (
   asset_symbol text UNIQUE NOT NULL, -- Ex: 'EUR/USD'
   y_value numeric NOT NULL,
   mean_b_value numeric NOT NULL,
+  freq_1_value numeric DEFAULT 0,
+  freq_2_value numeric DEFAULT 0,
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

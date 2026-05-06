@@ -11,7 +11,6 @@ import {
   Lock,
   Monitor,
   Globe,
-  Coins,
   MessageSquare,
   Trophy,
   BookOpen,
@@ -31,13 +30,17 @@ export const Sidebar = ({
   currentView,
   onResetLanding,
   user,
-  isAdmin
+  isAdmin,
+  isOpen,
+  onClose
 }: { 
   onViewChange: (view: string) => void, 
   currentView: string,
   onResetLanding: () => void,
   user: User | null,
-  isAdmin: boolean
+  isAdmin: boolean,
+  isOpen: boolean,
+  onClose: () => void
 }) => {
   const [selectedLang, setSelectedLang] = useState({ id: 'br', flag: 'br' });
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -76,8 +79,25 @@ export const Sidebar = ({
   const fullName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Trader';
 
   return (
-    <div className="flex flex-col h-full w-72 bg-[#08080a] border-r border-white/5 py-8 px-6 relative z-10 overflow-y-auto scrollbar-hide">
-      <div className="mb-10 px-2 flex items-center justify-between relative group/sidebar-header">
+    <>
+      {/* Backdrop for mobile */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+
+      <div className={cn(
+        "fixed lg:relative inset-y-0 left-0 z-50 flex flex-col h-full w-72 bg-[#08080a] border-r border-white/5 py-8 px-6 overflow-y-auto scrollbar-hide transition-transform duration-300 transform",
+        isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+      )}>
+        <div className="mb-10 px-2 flex items-center justify-between relative group/sidebar-header">
         <div 
           onClick={onResetLanding}
           className="flex items-center gap-3 group cursor-pointer"
@@ -169,7 +189,7 @@ export const Sidebar = ({
                 className="overflow-hidden pl-4 space-y-1 mt-1"
               >
                 {/* Dynamic Asset Submenus */}
-                {CATEGORIES.filter(cat => cat !== 'Cripto').map(category => (
+                {CATEGORIES.map(category => (
                   <div key={category} className="space-y-1">
                     <button 
                       onClick={() => toggleMenu(category.toLowerCase())}
@@ -201,21 +221,6 @@ export const Sidebar = ({
                   </div>
                 ))}
 
-                {/* Market Items - Cripto */}
-                <div 
-                  className={cn(
-                    "relative group overflow-hidden rounded-lg cursor-pointer",
-                    currentView === 'CRIPTO' ? "bg-white/5" : "hover:bg-white/5"
-                  )}
-                  onClick={() => onViewChange('CRIPTO')}
-                >
-                  <button className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-xs font-bold transition-all">
-                    <div className="flex items-center gap-3">
-                      <Coins className={cn("w-4 h-4", currentView === 'CRIPTO' ? "text-trading-green" : "text-zinc-500")} />
-                      <span className={cn(currentView === 'CRIPTO' ? "text-white" : "text-zinc-500 hover:text-white")}>Cripto</span>
-                    </div>
-                  </button>
-                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -343,5 +348,6 @@ export const Sidebar = ({
         </div>
       </div>
     </div>
-  );
+  </>
+);
 };

@@ -37,6 +37,35 @@ import { cn } from '../lib/utils';
 
 export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any }) => {
   const [activeFaq, setActiveFaq] = React.useState<number | null>(null);
+  const [isPurchasing, setIsPurchasing] = React.useState<string | null>(null);
+
+  const handlePurchase = async (priceId: string) => {
+    try {
+      setIsPurchasing(priceId);
+      const response = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          priceId,
+          email: user?.email,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error(data.error || 'Erro ao criar sessão de checkout');
+      }
+    } catch (err: any) {
+      console.error('Erro no checkout:', err);
+      alert(err.message || 'Ocorreu um erro ao processar sua compra. Por favor, tente novamente.');
+    } finally {
+      setIsPurchasing(null);
+    }
+  };
 
   React.useEffect(() => {
     const existingScript = document.getElementById('tradingview-ticker-script');
@@ -66,65 +95,71 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
   return (
     <div className="min-h-screen bg-[#050507] text-white font-sans overflow-x-hidden selection:bg-trading-green/30">
       {/* Promo Banner */}
-      <div className="bg-[#050507] border-b border-trading-green/20 py-2.5 px-6 relative z-50">
-        <div className="max-w-7xl mx-auto flex items-center justify-center gap-2 text-[10px] md:text-xs font-bold uppercase tracking-widest text-zinc-300">
-          <span>🔥 PROMO de lançamento:</span>
-          <span className="text-trading-green font-black">30% OFF</span>
-          <span className="text-zinc-600 px-1">/</span>
-          <span>Cupom:</span>
-          <span className="bg-trading-green/10 text-trading-green px-2 py-0.5 rounded border border-trading-green/20 font-black">PROMO30</span>
-          <a href="#pricing" className="ml-4 text-white hover:text-trading-green transition-colors border-b border-white hover:border-trading-green pb-0.5 font-black hidden sm:inline-block">
-            Acesse Agora →
+      <div className="bg-[#050507] border-b border-trading-green/20 py-2 md:py-2.5 px-4 md:px-6 relative z-50">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-1.5 md:gap-2 text-[9px] md:text-xs font-black uppercase tracking-widest text-zinc-300 text-center">
+          <div className="flex items-center gap-1.5">
+            <span>🔥 PROMO:</span>
+            <span className="text-trading-green">30% OFF</span>
+          </div>
+          <div className="hidden sm:inline text-zinc-700">/</div>
+          <div className="flex items-center gap-1.5">
+            <span>Cupom:</span>
+            <span className="bg-trading-green/10 text-trading-green px-2 py-0.5 rounded border border-trading-green/20">PROMO30</span>
+          </div>
+          <a href="#pricing" className="mt-1 sm:mt-0 sm:ml-4 text-white hover:text-trading-green transition-colors border-b border-white hover:border-trading-green pb-0.5 hidden xs:inline-block">
+            ACESSAR AGORA →
           </a>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-trading-green shadow-[0_0_10px_rgba(0,255,157,0.3)]" />
       </div>
 
       {/* Navigation - Floating Styled */}
-      <div className="fixed top-6 md:top-12 left-0 right-0 z-50 px-4 md:px-6 pointer-events-none">
+      <div className="fixed top-16 md:top-12 left-0 right-0 z-50 px-4 md:px-6 pointer-events-none">
         <nav className="max-w-4xl mx-auto h-14 md:h-16 bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/10 rounded-full flex items-center justify-between px-4 md:px-6 shadow-2xl pointer-events-auto">
-          <div className="flex items-center gap-2 md:gap-3">
-            <div className="w-7 h-7 md:w-8 md:h-8 bg-linear-to-br from-trading-green to-emerald-600 rounded-lg flex items-center justify-center shadow-lg shadow-trading-green/20 shrink-0">
-              <Zap className="w-4 h-4 md:w-5 md:h-5 text-black fill-black" />
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-linear-to-br from-trading-green to-emerald-400 rounded-xl flex items-center justify-center shadow-[0_0_25px_rgba(0,255,157,0.4)] shrink-0">
+              <Zap className="w-6 h-6 text-black fill-black" />
             </div>
-            <div className="flex flex-col leading-none scale-75 origin-left hidden sm:flex">
-              <span className="text-lg font-black tracking-tighter text-white">AQUILA</span>
-              <span className="text-[8px] font-black tracking-[0.2em] text-trading-green uppercase">Quant</span>
+            <div className="flex flex-col -space-y-1.5 hidden xs:flex">
+              <span className="text-xl font-black tracking-tighter text-white leading-none">AQUILA</span>
+              <span className="text-[10px] font-black tracking-widest text-trading-green uppercase">Quant</span>
             </div>
           </div>
           
-          <div className="flex items-center gap-3 sm:gap-4 md:gap-10">
+          <div className="hidden md:flex items-center gap-10">
             <button 
               onClick={() => document.getElementById('matemagica')?.scrollIntoView({ behavior: 'smooth' })} 
-              className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
+              className="text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
             >
               Funcionalidades
             </button>
             <button 
               onClick={() => document.getElementById('resultados')?.scrollIntoView({ behavior: 'smooth' })} 
-              className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
+              className="text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
             >
               Resultados
             </button>
             <button 
               onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })} 
-              className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
+              className="text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
             >
               Preços
             </button>
           </div>
 
-          <button 
-            onClick={onStart}
-            className="px-6 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest transition-all hover:border-trading-green/30 text-white"
-          >
-            {user ? 'Dashboard' : 'Login'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={onStart}
+              className="px-5 md:px-8 py-2 md:py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all hover:border-trading-green/30 text-white min-h-[40px] md:min-h-0 flex items-center"
+            >
+              {user ? 'Dashboard' : 'Login'}
+            </button>
+          </div>
         </nav>
       </div>
       
       {/* TradingView Ticker Tape - Now relative to content, not fixed to screen */}
-      <div className="relative z-40 bg-[#050507]/80 backdrop-blur-md border-b border-white/5 h-[48px] flex items-center overflow-hidden mt-28">
+      <div className="relative z-40 bg-[#050507]/80 backdrop-blur-md border-b border-white/5 h-[40px] md:h-[48px] flex items-center overflow-hidden mt-32 md:mt-28">
         {/* @ts-ignore */}
         <tv-ticker-tape 
           symbols="OANDA:XAUUSD,BMFBOVESPA:WDO1!,BMFBOVESPA:WIN1!,OANDA:EURUSD,BITSTAMP:ETHUSD,BITSTAMP:BTCUSD,OANDA:USDJPY,OANDA:GBPUSD,OANDA:USDCHF,OANDA:AUDUSD" 
@@ -135,7 +170,7 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
       </div>
 
       {/* Hero Section */}
-      <section className="relative pt-12 md:pt-20 pb-20 md:pb-32 px-6 overflow-hidden">
+      <section className="relative pt-10 md:pt-20 pb-16 md:pb-32 px-4 md:px-6 overflow-hidden">
         {/* Animated Market Chart Background */}
         <motion.div 
           initial={{ scale: 1.1, opacity: 0 }}
@@ -190,28 +225,12 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
           >
             <div className="glass-card rounded-[3rem] border border-white/10 p-4 shadow-2xl relative group overflow-hidden">
               <div className="rounded-[2.5rem] overflow-hidden aspect-video bg-[#0a0a0c] border border-white/5 relative">
-                 {/* Video Placeholder */}
-                 <div className="absolute inset-0 bg-radial-gradient from-trading-green/5 to-transparent opacity-50" />
-                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10" />
-                 
-                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-6">
-                    <motion.div 
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="w-24 h-24 rounded-full bg-trading-green flex items-center justify-center shadow-[0_0_50px_rgba(0,255,157,0.4)] cursor-pointer group-hover:scale-110 transition-transform"
-                    >
-                       <Zap className="w-10 h-10 text-black fill-black" />
-                    </motion.div>
-                    <div className="flex flex-col items-center gap-2">
-                       <span className="text-[10px] font-black uppercase tracking-[0.4em] text-trading-green animate-pulse">Preview Video</span>
-                       <span className="text-zinc-600 text-[8px] font-bold uppercase tracking-widest">Coming Soon</span>
-                    </div>
-                 </div>
-                 
-                 {/* Decorative elements to look like a player */}
-                 <div className="absolute bottom-8 left-8 right-8 h-1 bg-white/10 rounded-full overflow-hidden">
-                    <div className="w-1/3 h-full bg-trading-green shadow-[0_0_10px_rgba(0,255,157,0.5)]" />
-                 </div>
+                <img 
+                  src="https://i.imgur.com/bjtuiIH.png" 
+                  alt="Antes x Depois" 
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
               </div>
             </div>
 
@@ -285,20 +304,14 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
       </section>
 
       {/* Partners Section */}
-      <section className="py-16 border-b border-white/5 bg-white/[0.01]">
-        <div className="max-w-7xl mx-auto px-6 space-y-12">
-          {/* Row 1 */}
-          <div className="flex flex-wrap items-center justify-center gap-12 md:gap-24 grayscale opacity-30">
-            {['MetaTrader5', 'Nelogica', 'Tryd', 'TradingView', 'Investing.com'].map((partner) => (
-              <span key={partner} className="text-sm font-black tracking-[0.3em] uppercase whitespace-nowrap">{partner}</span>
-            ))}
-          </div>
-          {/* Row 2 */}
-          <div className="flex flex-wrap items-center justify-center gap-12 md:gap-24 grayscale opacity-30">
-            {['B3', 'Coinbase', 'Crypto.com'].map((partner) => (
-              <span key={partner} className="text-sm font-black tracking-[0.3em] uppercase whitespace-nowrap">{partner}</span>
-            ))}
-          </div>
+      <section className="py-12 md:py-20 border-b border-white/5 bg-white/[0.01]">
+        <div className="max-w-7xl mx-auto px-6 flex justify-center">
+          <img 
+            src="https://i.imgur.com/IxoS18C.png" 
+            alt="Parceiros Aquila Quant" 
+            className="w-full h-auto max-w-5xl"
+            referrerPolicy="no-referrer"
+          />
         </div>
       </section>
 
@@ -357,22 +370,22 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
               {
                 title: "Pontos de compra e venda",
                 desc: "Zonas de alta liquidez onde os grandes players institucionais costumam atuar, calculadas através de desvios estatísticos precisos.",
-                image: "https://images.unsplash.com/photo-1611974717482-aa8a29a435a2?auto=format&fit=crop&q=80&w=800"
+                image: "https://i.imgur.com/KuVtOxw.png"
               },
               {
                 title: "Máxima e mínima do dia",
                 desc: "Previsão matemática do range de oscilação do mercado, permitindo que você saiba onde o preço tende a exaurir.",
-                image: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&q=80&w=800"
+                image: "https://i.imgur.com/aEgVGAB.png"
               },
               {
                 title: "Tendência do dia",
                 desc: "Vieses calculados com base em fluxo e volume, indicando se a maior probabilidade estatística é de alta, baixa ou consolidação.",
-                image: "https://images.unsplash.com/photo-1551288049-bbbda536639a?auto=format&fit=crop&q=80&w=800"
+                image: "https://i.imgur.com/fKfpYce.png"
               },
               {
                 title: "Stop loss e stop gain",
                 desc: "Gerenciamento de risco otimizado para cada cenário, mantendo você fora de violinadas e garantindo alvos matemáticos.",
-                image: "https://images.unsplash.com/photo-1560523190-674ca2996d36?auto=format&fit=crop&q=80&w=800"
+                image: "https://i.imgur.com/ZpO62n1.png"
               }
             ].map((item, i) => (
               <div key={i} className={cn(
@@ -384,10 +397,10 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
                     <img 
                       src={item.image} 
                       alt={item.title} 
-                      className="w-full aspect-video lg:aspect-4/3 object-cover rounded-[2rem] grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700"
+                      className="w-full aspect-video lg:aspect-4/3 object-cover rounded-[2rem]"
                       referrerPolicy="no-referrer"
                     />
-                    <div className="absolute inset-0 bg-linear-to-t from-[#050507] via-transparent to-transparent opacity-60" />
+                    {/* Removed gradient overlay for normal image display */}
                   </div>
                 </div>
                 <div className="w-full lg:w-1/2 space-y-6 px-6 lg:px-12">
@@ -463,56 +476,70 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
         </div>
         
         <div className="space-y-8">
-          {/* Row 1: Right to Left */}
+          {/* Row 1: Right to Left (6 Unique Images) */}
           <div className="flex select-none">
             <motion.div 
               animate={{ x: ["0%", "-50%"] }}
               transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
               className="flex items-center gap-6 whitespace-nowrap"
             >
-              {[1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6].map((i, idx) => (
-                <div key={idx} className="w-[300px] md:w-[400px]">
+              {[
+                "https://i.imgur.com/Ui7iZiX.png",
+                "https://i.imgur.com/b36jRIi.png",
+                "https://i.imgur.com/o5EQF9U.png",
+                "https://i.imgur.com/7qvdyWa.png",
+                "https://i.imgur.com/S4to5Rb.png",
+                "https://i.imgur.com/4MLehwC.png",
+                "https://i.imgur.com/Ui7iZiX.png",
+                "https://i.imgur.com/b36jRIi.png",
+                "https://i.imgur.com/o5EQF9U.png",
+                "https://i.imgur.com/7qvdyWa.png",
+                "https://i.imgur.com/S4to5Rb.png",
+                "https://i.imgur.com/4MLehwC.png"
+              ].map((src, idx) => (
+                <div key={`row1-${idx}`} className="w-[300px] md:w-[400px]">
                   <div className="glass-card rounded-[2rem] overflow-hidden border border-white/5 bg-white/[0.02]">
                     <img 
-                      src={`https://picsum.photos/seed/feedback-${i}/800/600`} 
-                      alt={`Feedback ${i}`} 
+                      src={src} 
+                      alt={`Feedback Top ${idx}`} 
                       className="w-full aspect-4/3 object-cover opacity-80"
                       referrerPolicy="no-referrer"
                     />
-                    <div className="p-6">
-                      <div className="flex items-center gap-2 mb-2">
-                         {Array.from({length: 5}).map((_, j) => <Star key={j} className="w-3 h-3 text-trading-green fill-current" />)}
-                      </div>
-                      <p className="text-xs font-bold text-zinc-400 italic">"Resultados consistentes e leitura de mercado simplificada!"</p>
-                    </div>
                   </div>
                 </div>
               ))}
             </motion.div>
           </div>
 
-          {/* Row 2: Left to Right */}
+          {/* Row 2: Left to Right (6 Unique Images) */}
           <div className="flex select-none">
             <motion.div 
               animate={{ x: ["-50%", "0%"] }}
               transition={{ duration: 35, repeat: Infinity, ease: "linear" }}
               className="flex items-center gap-6 whitespace-nowrap"
             >
-              {[6, 5, 4, 3, 2, 1, 6, 5, 4, 3, 2, 1].map((i, idx) => (
-                <div key={idx} className="w-[300px] md:w-[400px]">
+              {[
+                "https://i.imgur.com/C2B62wk.png",
+                "https://i.imgur.com/OeEvPvZ.png",
+                "https://i.imgur.com/UriraBa.png",
+                "https://i.imgur.com/178csTt.png",
+                "https://i.imgur.com/HSSiSD9.png",
+                "https://i.imgur.com/fYhJLJ8.png",
+                "https://i.imgur.com/C2B62wk.png",
+                "https://i.imgur.com/OeEvPvZ.png",
+                "https://i.imgur.com/UriraBa.png",
+                "https://i.imgur.com/178csTt.png",
+                "https://i.imgur.com/HSSiSD9.png",
+                "https://i.imgur.com/fYhJLJ8.png"
+              ].map((src, idx) => (
+                <div key={`row2-${idx}`} className="w-[300px] md:w-[400px]">
                   <div className="glass-card rounded-[2rem] overflow-hidden border border-white/5 bg-white/[0.02]">
                     <img 
-                      src={`https://picsum.photos/seed/alt-feedback-${i}/800/600`} 
-                      alt={`Feedback ${i}`} 
+                      src={src} 
+                      alt={`Feedback Bottom ${idx}`} 
                       className="w-full aspect-4/3 object-cover opacity-80"
                       referrerPolicy="no-referrer"
                     />
-                    <div className="p-6">
-                      <div className="flex items-center gap-2 mb-2">
-                         {Array.from({length: 5}).map((_, j) => <Star key={j} className="w-3 h-3 text-trading-green fill-current" />)}
-                      </div>
-                      <p className="text-xs font-bold text-zinc-400 italic">"Garantia de performance com base estatística real."</p>
-                    </div>
                   </div>
                 </div>
               ))}
@@ -531,9 +558,9 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
             {[
-              { title: 'Relatório B3', price: '497', monthly: '41', highlight: false, features: ['Regiões para mini dólar', 'Regiões para mini índice', 'Dashboard + indicadores', 'Suporte VIP'] },
-              { title: 'B3 + Forex (Elite)', price: '697', monthly: '58', highlight: true, promo: '30% OFF', oldPrice: '997', features: ['Regiões para mini dólar', 'Regiões para mini índice', 'Regiões para Forex', 'Dashboard + indicadores', 'Suporte Ultra-VIP', 'Comunidade Discord', 'Treinamento gravado'] },
-              { title: 'Relatório Forex', price: '497', monthly: '41', highlight: false, features: ['Regiões para Forex', 'Dashboard + indicadores', 'Suporte VIP'] },
+              { title: 'Relatório B3', price: '497', priceId: 'price_1TU6igDlA9wB0KdobK6PujzZ', monthly: '41', highlight: false, features: ['Regiões para mini dólar', 'Regiões para mini índice', 'Dashboard + indicadores', 'Suporte VIP'] },
+              { title: 'B3 + Forex (Elite)', price: '697', priceId: 'price_1TU6lSDlA9wB0KdoYrqhYI0o', highlight: true, promo: '30% OFF', oldPrice: '997', features: ['Regiões para mini dólar', 'Regiões para mini índice', 'Regiões para Forex', 'Dashboard + indicadores', 'Suporte Ultra-VIP', 'Comunidade Discord', 'Treinamento gravado'] },
+              { title: 'Relatório Forex', price: '497', priceId: 'price_1TU6jNDlA9wB0KdoS9aGM4p7', monthly: '41', highlight: false, features: ['Regiões para Forex', 'Dashboard + indicadores', 'Suporte VIP'] },
             ].map((plan, i) => (
               <div key={i} className={cn(
                 "glass-card rounded-[2.5rem] p-8 border transition-all relative overflow-hidden flex flex-col",
@@ -585,15 +612,21 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
                 </div>
 
                 <button 
-                  onClick={onStart}
+                  onClick={() => handlePurchase(plan.priceId!)}
+                  disabled={isPurchasing !== null}
                   className={cn(
-                    "w-full py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-lg",
+                    "w-full py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-lg flex items-center justify-center",
                     plan.highlight 
                     ? "bg-trading-green text-black shadow-trading-green/20 hover:scale-[1.03]" 
-                    : "bg-white/5 text-white border border-white/10 hover:bg-white/10"
+                    : "bg-white/5 text-white border border-white/10 hover:bg-white/10",
+                    isPurchasing === plan.priceId && "opacity-50 cursor-wait"
                   )}
                 >
-                  Teste 7 Dias Grátis
+                  {isPurchasing === plan.priceId ? (
+                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    'Teste 7 Dias Grátis'
+                  )}
                 </button>
                 <p className="text-[8px] text-zinc-600 font-bold text-center mt-4 uppercase tracking-widest">Cancelamento a qualquer momento</p>
                 <p className="text-[7px] text-trading-green/60 font-black text-center mt-1.5 uppercase tracking-[0.2em] bg-trading-green/5 py-1 rounded-lg">Garantia de 30 dias</p>
@@ -652,26 +685,12 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
         </div>
       </section>
 
-      {/* CTA Final */}
-      <section className="py-20 md:py-32 px-6 relative text-center">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[300px] bg-trading-green/20 blur-[150px] rounded-full -z-10 opacity-30 appearance-none pointer-events-none" />
-        
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-4xl md:text-6xl font-black tracking-tighter uppercase mb-32">
-            Pronto para transformar sua operação?
-          </h2>
-          <button 
-            onClick={onStart}
-            className="px-16 py-6 bg-white text-black rounded-3xl font-black uppercase text-base tracking-[0.4em] shadow-2xl hover:scale-110 active:scale-95 transition-all"
-          >
-            ACESSAR AGORA
-          </button>
-          
-          <div className="mt-20 flex items-center justify-center gap-12 grayscale opacity-40">
-             <div className="flex items-center gap-2"><Lock className="w-4 h-4"/> <span className="text-[10px] font-black uppercase tracking-widest">Seguro</span></div>
-             <div className="flex items-center gap-2"><Globe className="w-4 h-4"/> <span className="text-[10px] font-black uppercase tracking-widest">Global</span></div>
-             <div className="flex items-center gap-2"><Zap className="w-4 h-4"/> <span className="text-[10px] font-black uppercase tracking-widest">Rápido</span></div>
-          </div>
+      {/* Trust Badges Section */}
+      <section className="py-12 px-6 text-center border-t border-white/5">
+        <div className="max-w-4xl mx-auto flex items-center justify-center gap-8 md:gap-12 grayscale opacity-40">
+           <div className="flex items-center gap-2"><Lock className="w-4 h-4"/> <span className="text-[10px] font-black uppercase tracking-widest">Seguro</span></div>
+           <div className="flex items-center gap-2"><Globe className="w-4 h-4"/> <span className="text-[10px] font-black uppercase tracking-widest">Global</span></div>
+           <div className="flex items-center gap-2"><Zap className="w-4 h-4"/> <span className="text-[10px] font-black uppercase tracking-widest">Rápido</span></div>
         </div>
       </section>
 

@@ -4,7 +4,6 @@ import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { MarketCard } from './components/MarketCard';
 import { PortfolioChart } from './components/PortfolioChart';
-import { CryptoPriceList } from './components/CryptoPriceList';
 import { InvestmentResults, InvestmentDistribution, TradingSignals } from './components/InvestmentWidgets';
 import { CalendarWidget } from './components/Calendar';
 import { Profile } from './components/Profile';
@@ -64,6 +63,8 @@ export default function App() {
   const [hasEntered, setHasEntered] = useState(false);
   const isFirstLoad = React.useRef(true);
   
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  
   const { user, loading, isAdmin, isInitializing } = useAuth();
   
   useEffect(() => {
@@ -101,12 +102,6 @@ export default function App() {
       case 'LEADERBOARD': return <Leaderboard />;
       case 'STUDY': return <ArticlesStudy />;
       case 'CHAT': return <LiveChat isPiP={false} onTogglePiP={() => {}} />;
-      case 'CRIPTO':
-        return (
-          <AccessGate requiredTag="Cripto">
-            <CryptoPriceList />
-          </AccessGate>
-        );
       case 'ADMIN': 
       case 'ADMIN_CLIENTS':
       case 'ADMIN_PAIRS':
@@ -168,6 +163,8 @@ export default function App() {
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none z-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]"></div>
 
         <Sidebar 
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
           onViewChange={(view) => {
             if (view === 'CHAT') {
               setCurrentView('CHAT');
@@ -176,18 +173,24 @@ export default function App() {
             } else {
               setCurrentView(view);
             }
+            setIsSidebarOpen(false); // Close sidebar on view change on mobile
           }}
           currentView={currentView} 
           onResetLanding={() => {
             setHasEntered(false);
             setCurrentView('DASHBOARD');
+            setIsSidebarOpen(false);
           }}
           user={user}
           isAdmin={isAdmin}
         />
         
         <main className="flex-1 flex flex-col min-w-0 overflow-y-auto overflow-x-hidden scrollbar-hide relative z-10 transition-all duration-300">
-          <Header currentView={currentView} user={user} />
+          <Header 
+            currentView={currentView} 
+            user={user} 
+            onMenuClick={() => setIsSidebarOpen(true)}
+          />
           {renderView()}
         </main>
 
