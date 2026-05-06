@@ -53,11 +53,23 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
         }),
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = 'Erro ao conectar com o servidor de pagamento';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          errorMessage = `HTTP ${response.status}: ${errorText || 'Erro desconhecido'}`;
+        }
+        throw new Error(errorMessage);
+      }
+
       const data = await response.json();
       if (data.url) {
         window.location.href = data.url;
       } else {
-        throw new Error(data.error || 'Erro ao criar sessão de checkout');
+        throw new Error('URL de checkout não fornecida pelo servidor');
       }
     } catch (err: any) {
       console.error('Erro no checkout:', err);

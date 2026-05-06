@@ -16,6 +16,14 @@ async function startServer() {
   const PORT = 3000;
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+  
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.warn("WARNING: STRIPE_SECRET_KEY is not defined in environment variables.");
+  }
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.warn("WARNING: SUPABASE_SERVICE_ROLE_KEY is not defined in environment variables.");
+  }
+
   const supabaseAdmin = createClient(
     process.env.VITE_SUPABASE_URL || "",
     process.env.SUPABASE_SERVICE_ROLE_KEY || "",
@@ -26,6 +34,15 @@ async function startServer() {
       },
     }
   );
+
+  // Health check endpoint
+  app.get("/api/health", (req, res) => {
+    res.json({ 
+      status: "ok", 
+      stripeConfigured: !!process.env.STRIPE_SECRET_KEY,
+      supabaseConfigured: !!process.env.SUPABASE_SERVICE_ROLE_KEY
+    });
+  });
 
   // Stripe Webhook needs raw body for signature verification
   app.post(
@@ -127,6 +144,11 @@ async function startServer() {
 
     if (!priceId) {
       return res.status(400).json({ error: "Price ID is required" });
+    }
+
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error("Missing STRIPE_SECRET_KEY");
+      return res.status(500).json({ error: "Configuração do servidor incompleta: STRIPE_SECRET_KEY ausente." });
     }
 
     try {
