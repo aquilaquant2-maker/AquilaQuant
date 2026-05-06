@@ -17,6 +17,7 @@ import { AdminView } from './components/AdminView';
 import { HomeDashboardWidgets } from './components/HomeDashboardWidgets';
 import { AuthModal } from './components/AuthModal';
 import { AccessGate } from './components/AccessGate';
+import { SetPasswordModal } from './components/SetPasswordModal';
 import { SUPPORTED_ASSETS } from './constants/assets';
 import { Bitcoin, Cpu, Zap, ChevronDown, Shield, Lock, Loader2 } from 'lucide-react';
 import { checkSupabaseConnection } from './lib/supabaseClient';
@@ -64,9 +65,26 @@ export default function App() {
   const isFirstLoad = React.useRef(true);
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSetPasswordOpen, setIsSetPasswordOpen] = useState(false);
   
   const { user, loading, isAdmin, isInitializing } = useAuth();
   
+  useEffect(() => {
+    // Interceptor para convites e recuperação de senha (Silent Onboarding)
+    const handleAuthHash = () => {
+      const hash = window.location.hash;
+      if (hash && (hash.includes('type=invite') || hash.includes('type=recovery') || hash.includes('access_token='))) {
+        // Se houver token na URL, abrimos o modal de senha e garantimos que o usuário "entrou" no app
+        setIsSetPasswordOpen(true);
+        setHasEntered(true);
+      }
+    };
+
+    handleAuthHash();
+    window.addEventListener('hashchange', handleAuthHash);
+    return () => window.removeEventListener('hashchange', handleAuthHash);
+  }, []);
+
   useEffect(() => {
     const init = async () => {
       await checkSupabaseConnection();
@@ -161,6 +179,12 @@ export default function App() {
       <div className="flex h-screen bg-[#050507] text-white overflow-hidden font-sans relative">
         {/* Background Grid Lines Overlay */}
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none z-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]"></div>
+
+        {/* Modal de Definição de Senha (Silent Onboarding) */}
+        <SetPasswordModal 
+          isOpen={isSetPasswordOpen} 
+          onSuccess={() => setIsSetPasswordOpen(false)} 
+        />
 
         <Sidebar 
           isOpen={isSidebarOpen}

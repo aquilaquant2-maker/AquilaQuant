@@ -39,9 +39,22 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
   const [activeFaq, setActiveFaq] = React.useState<number | null>(null);
   const [isPurchasing, setIsPurchasing] = React.useState<string | null>(null);
 
-  const handlePurchase = async (priceId: string) => {
+  const handlePurchase = async (priceId: string, directLink?: string) => {
     try {
       setIsPurchasing(priceId);
+      
+      // Se houver um link direto fornecido (Payment Link), usamos ele como fallback ou primário
+      // para evitar erros de 404 em ambientes sem backend (como Netlify)
+      if (directLink) {
+        // Adiciona prefilled_email se o usuário estiver logado
+        const url = new URL(directLink);
+        if (user?.email) {
+          url.searchParams.set('prefilled_email', user.email);
+        }
+        window.location.href = url.toString();
+        return;
+      }
+
       const response = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: {
@@ -570,9 +583,34 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
             {[
-              { title: 'Relatório B3', price: '497', priceId: 'price_1TU6igDlA9wB0KdobK6PujzZ', monthly: '41', highlight: false, features: ['Regiões para mini dólar', 'Regiões para mini índice', 'Dashboard + indicadores', 'Suporte VIP'] },
-              { title: 'B3 + Forex (Elite)', price: '697', priceId: 'price_1TU6lSDlA9wB0KdoYrqhYI0o', highlight: true, promo: '30% OFF', oldPrice: '997', features: ['Regiões para mini dólar', 'Regiões para mini índice', 'Regiões para Forex', 'Dashboard + indicadores', 'Suporte Ultra-VIP', 'Comunidade Discord', 'Treinamento gravado'] },
-              { title: 'Relatório Forex', price: '497', priceId: 'price_1TU6jNDlA9wB0KdoS9aGM4p7', monthly: '41', highlight: false, features: ['Regiões para Forex', 'Dashboard + indicadores', 'Suporte VIP'] },
+              { 
+                title: 'Relatório B3', 
+                price: '497', 
+                priceId: 'price_1TU6igDlA9wB0KdobK6PujzZ', 
+                link: 'https://buy.stripe.com/bJe7sL02C0Qvfjy4Fp8Vi02',
+                monthly: '41', 
+                highlight: false, 
+                features: ['Regiões para mini dólar', 'Regiões para mini índice', 'Dashboard + indicadores', 'Suporte VIP'] 
+              },
+              { 
+                title: 'B3 + Forex (Elite)', 
+                price: '697', 
+                priceId: 'price_1TU6lSDlA9wB0KdoYrqhYI0o', 
+                link: 'https://buy.stripe.com/fZu7sL02C42H0oE9ZJ8Vi00?prefilled_promo_code=PROMO30',
+                highlight: true, 
+                promo: '30% OFF', 
+                oldPrice: '997', 
+                features: ['Regiões para mini dólar', 'Regiões para mini índice', 'Regiões para Forex', 'Dashboard + indicadores', 'Suporte Ultra-VIP', 'Comunidade Discord', 'Treinamento gravado'] 
+              },
+              { 
+                title: 'Relatório Forex', 
+                price: '497', 
+                priceId: 'price_1TU6jNDlA9wB0KdoS9aGM4p7', 
+                link: 'https://buy.stripe.com/00wcN59DcfLp1sI5Jt8Vi01',
+                monthly: '41', 
+                highlight: false, 
+                features: ['Regiões para Forex', 'Dashboard + indicadores', 'Suporte VIP'] 
+              },
             ].map((plan, i) => (
               <div key={i} className={cn(
                 "glass-card rounded-[2.5rem] p-8 border transition-all relative overflow-hidden flex flex-col",
@@ -624,7 +662,7 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
                 </div>
 
                 <button 
-                  onClick={() => handlePurchase(plan.priceId!)}
+                  onClick={() => handlePurchase(plan.priceId!, 'link' in plan ? (plan as any).link : undefined)}
                   disabled={isPurchasing !== null}
                   className={cn(
                     "w-full py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-lg flex items-center justify-center",
