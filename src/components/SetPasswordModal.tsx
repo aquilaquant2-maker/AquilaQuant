@@ -36,91 +36,94 @@ export const SetPasswordModal = ({ isOpen, onSuccess }: SetPasswordModalProps) =
 
     setIsLoading(true);
     setError(null);
-    setStatusMessage('Iniciando...');
+    setStatusMessage('Sincronizando...');
 
     const safetyTimeout = setTimeout(() => {
       setIsLoading(false);
-      setError('A conexão com o servidor expirou. Por favor, tente recarregar a página e clicar no link do e-mail novamente.');
-    }, 25000);
+      setError('A resposta do servidor está demorando mais que o esperado. Por favor, tente recarregar a página e usar o link do e-mail novamente.');
+    }, 30000);
 
     try {
-      // 1. Sincronização e Verificação de Sessão (Melhorado para Produção)
+      // 1. Garantir Sessão Fresh
       console.log('🔄 Sincronizando acesso...');
       setStatusMessage('Validando acesso...');
       
-      let session = null;
-      let lastError = null;
-
-      // Espera o SDK processar os cookies/tokens da URL
-      for (let i = 0; i < 4; i++) {
-        const { data, error } = await supabase.auth.getSession();
-        if (data.session) {
-          session = data.session;
-          break;
-        }
-        lastError = error;
-        await new Promise(r => setTimeout(r, 1000));
-      }
-
-      if (!session) {
-        console.error('❌ Falha na sessão:', lastError);
-        throw new Error('Não foi possível validar seu login automático. Por favor, feche esta aba e clique novamente no link do seu e-mail.');
-      }
-
-      // 2. Atualização de Senha com Retry Interno
-      console.log('📡 Salvando nova senha...');
-      setStatusMessage('Salvando senha...');
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      let updateResult = null;
-      let attempts = 0;
-      const maxAttempts = 2;
+      if (sessionError) throw sessionError;
+      
+      if (!session) {
+        // Fallback: Tenta pegar do hash se o SDK ainda não processou
+        console.warn('⚠️ Sessão não encontrada pelo SDK, tentando via Hash...');
+        const hash = window.location.hash;
+        if (hash && hash.includes('access_token')) {
+           const params = new URLSearchParams(hash.replace('#', ''));
+           const access = params.get('access_token');
+           const refresh = params.get('refresh_token');
+           if (access && refresh) {
+             const { error: setErr } = await supabase.auth.setSession({ access_token: access, refresh_token: refresh });
+             if (setErr) console.warn('SetSession error:', setErr);
+           }
+        } else {
+          throw new Error('Não foi possível encontrar sua sessão de ativação. Por favor, reabra o link do e-mail.');
+        }
+      }
 
-      while (attempts < maxAttempts) {
-        try {
-          const { data, error } = await supabase.auth.updateUser({ 
-            password: password 
+      // 2. Atualização Atômica de Senha
+      console.log('📡 Salvando nova senha...');
+      setStatusMessage('Protegendo conta...');
+      
+      // Tentativa 1: SDK Oficial
+      const { error: updateError } = await supabase.auth.updateUser({ 
+        password: password 
+      });
+
+      if (updateError) {
+        console.warn('⚠️ Erro no updateUser oficial, tentando fallback direto...', updateError);
+        
+        // Tentativa 2: API Rest Direta (Bypass SDK overhead/conflicts)
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (currentSession) {
+          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/auth/v1/user`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${currentSession.access_token}`
+            },
+            body: JSON.stringify({ password })
           });
           
-          if (error) {
-            // Se o erro for que a senha é igual, ignoramos e seguimos
-            if (error.message.includes('New password should be different')) {
-              updateResult = { data, error: null };
-              break;
+          if (!response.ok) {
+            const errData = await response.json();
+            if (!errData.message?.includes('New password should be different')) {
+              throw new Error(errData.message || 'Falha crítica na atualização de segurança.');
             }
-            throw error;
           }
-          
-          updateResult = { data, error: null };
-          break;
-        } catch (err: any) {
-          attempts++;
-          console.warn(`⚠️ Tentativa ${attempts} falhou:`, err.message);
-          if (attempts >= maxAttempts) throw err;
-          setStatusMessage('Reestabelecendo conexão...');
-          await new Promise(r => setTimeout(r, 2000));
+        } else {
+          throw updateError;
         }
       }
 
       clearTimeout(safetyTimeout);
-      console.log('🎉 Senha alterada com sucesso!');
-      setStatusMessage('Conta ativada!');
+      console.log('🎉 Operação concluída!');
+      setStatusMessage('Sucesso!');
       setIsSuccess(true);
       
-      window.history.replaceState(null, '', window.location.pathname);
+      // Remove tokens da URL para evitar loops
+      try {
+        window.history.replaceState(null, '', window.location.pathname);
+      } catch (e) {
+        window.location.hash = '';
+      }
 
       setTimeout(() => {
         onSuccess();
       }, 1500);
     } catch (err: any) {
       clearTimeout(safetyTimeout);
-      console.error('🔴 ERRO NO FLOW:', err);
-      
-      let errorMessage = err.message || 'Erro ao definir senha.';
-      if (err.message?.includes('JWT') || err.status === 401) {
-        errorMessage = 'Sessão expirada. Por favor, reabra o link do e-mail.';
-      }
-      
-      setError(errorMessage);
+      console.error('🔴 ERRO FATAL NO MODAL:', err);
+      setError(err.message || 'Erro inesperado. Tente novamente.');
       setIsLoading(false);
     }
   };

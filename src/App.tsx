@@ -75,23 +75,31 @@ export default function App() {
     const isSpecialFlow = hash && (hash.includes('type=invite') || hash.includes('type=recovery') || hash.includes('access_token='));
 
     if (isSpecialFlow) {
+      console.log('🎫 Detectado fluxo especial de autenticação...');
       setIsSetPasswordOpen(true);
       setHasEntered(true);
     }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('🔐 Auth Event:', event);
+      
       if (event === 'PASSWORD_RECOVERY') {
         setIsSetPasswordOpen(true);
         setHasEntered(true);
-      } else if (event === 'SIGNED_IN' && isSpecialFlow) {
-        // Se entrou via flow especial e acabou de logar, garante que o modal está aberto
+      } else if (event === 'SIGNED_IN' && (isSpecialFlow || window.location.hash.includes('access_token'))) {
         setIsSetPasswordOpen(true);
         setHasEntered(true);
       } else if (event === 'USER_UPDATED' && isSetPasswordOpen) {
-        // Se a senha foi atualizada com sucesso, fechamos o modal
         setIsSetPasswordOpen(false);
         setHasEntered(true);
-        window.location.hash = '';
+        try {
+          window.history.replaceState(null, '', window.location.pathname);
+        } catch (e) {
+          window.location.hash = '';
+        }
+      } else if (session && !hasEntered) {
+        // Se temos sessão mas ainda estamos na landing, deixa entrar
+        setHasEntered(true);
       }
     });
 
