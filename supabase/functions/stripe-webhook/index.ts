@@ -42,7 +42,6 @@ serve(async (req) => {
       const customerEmail = session.customer_details?.email
       const customerName = session.customer_details?.name || ''
       
-      // Mapeamento de planos baseado nos Price IDs que você forneceu
       let planType = 'B3'
       const lineItems = await stripe.checkout.sessions.listLineItems(session.id)
       const priceId = lineItems.data[0]?.price?.id
@@ -56,64 +55,38 @@ serve(async (req) => {
       }
 
       if (customerEmail) {
-        console.log(`🚀 Processando acesso para: ${customerEmail} (Plano: ${planType})`)
+        console.log(`🚀 Processando: ${customerEmail}`)
 
-        // 1. Verificar se o usuário já existe no Auth
-        const { data: userData } = await supabase.auth.admin.listUsers()
-        const existingUser = userData?.users.find(u => u.email === customerEmail)
+        // 1. Tenta convidar - Se já existir, o Supabase retorna erro amigável
+        const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(customerEmail, {
+          data: { full_name: customerName, plan_type: planType },
+          redirectTo: 'https://dailydolar.com.br/'
+        })
 
-        if (existingUser) {
-          // Usuário já existe: Atualiza as tags de acesso no perfil
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('access_tags')
-            .eq('id', existingUser.id)
-            .single()
+        // Se o erro for que o usuário já existe, não paramos o processo
+        const userExists = inviteError?.message?.includes('already has an account') || inviteError?.status === 422
+        
+        if (inviteError && !userExists) {
+          console.error('❌ Erro fatal no convite:', inviteError)
+          throw inviteError
+        }
 
-          const currentTags = profile?.access_tags || []
-          const newTags = Array.from(new Set([...currentTags, ...accessTags]))
+        const userId = inviteData?.user?.id || (await supabase.auth.admin.listUsers()).data.users.find(u => u.email === customerEmail)?.id
 
-          await supabase
-            .from('profiles')
-            .update({ 
-              access_tags: newTags,
-              full_name: customerName // Atualiza o nome se necessário
-            })
-            .eq('id', existingUser.id)
-
-          console.log(`✅ Acesso atualizado para usuário existente: ${existingUser.id}`)
-        } else {
-          // USUÁRIO NOVO: Dispara o Convite (Silent Onboarding)
-          console.log(`✉️ Enviando convite para novo usuário: ${customerEmail}`)
-          
-          const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(customerEmail, {
-            data: { full_name: customerName },
-            redirectTo: 'https://subtle-scone-3799a0.netlify.app/' // O link de retorno após definir senha
-          })
-
-          if (inviteError) {
-            console.error('❌ Erro ao convidar usuário:', inviteError)
-            throw inviteError
-          }
-
-          const userId = inviteData.user.id
-
-          // Cria o perfil inicial na tabela 'profiles'
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert({
+        if (userId) {
+          // Atualiza ou cria o perfil - Usando try/catch para não quebrar a function se a tabela falhar
+          try {
+            await supabase.from('profiles').upsert({
               id: userId,
               email: customerEmail,
               full_name: customerName,
               access_tags: accessTags,
-              created_at: new Date().toISOString()
+              updated_at: new Date().toISOString()
             })
-
-          if (profileError) {
-            console.error('❌ Erro ao criar perfil:', profileError)
+            console.log(`✅ Acesso liberado para ${userId}`)
+          } catch (e) {
+            console.warn('⚠️ Perfil não pôde ser atualizado, mas o convite foi enviado:', e.message)
           }
-
-          console.log(`✅ Novo usuário convidado e perfil criado: ${userId}`)
         }
       }
     }

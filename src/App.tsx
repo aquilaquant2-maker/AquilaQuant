@@ -71,9 +71,21 @@ export default function App() {
   
   useEffect(() => {
     // Interceptor para convites e recuperação de senha (Silent Onboarding)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const checkHash = () => {
       const hash = window.location.hash;
-      if (event === 'PASSWORD_RECOVERY' || hash.includes('type=invite') || hash.includes('type=recovery') || hash.includes('access_token=')) {
+      if (hash && (hash.includes('type=invite') || hash.includes('type=recovery') || hash.includes('access_token='))) {
+        setIsSetPasswordOpen(true);
+        setHasEntered(true);
+        return true;
+      }
+      return false;
+    };
+
+    // Verifica imediatamente no carregamento
+    checkHash();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && checkHash())) {
         setIsSetPasswordOpen(true);
         setHasEntered(true);
       }
@@ -162,6 +174,10 @@ export default function App() {
         <AuthModal 
           isOpen={isAuthModalOpen} 
           onClose={() => setIsAuthModalOpen(false)} 
+        />
+        <SetPasswordModal 
+          isOpen={isSetPasswordOpen} 
+          onSuccess={() => setIsSetPasswordOpen(false)} 
         />
       </>
     );
