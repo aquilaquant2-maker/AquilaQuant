@@ -44,54 +44,69 @@ export const SetPasswordModal = ({ isOpen, onSuccess }: SetPasswordModalProps) =
     }, 25000);
 
     try {
-      // 1. Garante que a sessão foi estabelecida (Wait for session exchange)
-      console.log('🔄 Verificando sessão ativa...');
-      let session = null;
+      // 1. Sincronização e Verificação de Sessão (Melhorado para Produção)
+      console.log('🔄 Sincronizando acesso...');
+      setStatusMessage('Validando acesso...');
       
-      for (let i = 0; i < 6; i++) {
-        setStatusMessage(i === 0 ? 'Verificando acesso...' : 'Sincronizando segurança...');
-        const { data } = await supabase.auth.getSession();
+      let session = null;
+      let lastError = null;
+
+      // Espera o SDK processar os cookies/tokens da URL
+      for (let i = 0; i < 4; i++) {
+        const { data, error } = await supabase.auth.getSession();
         if (data.session) {
           session = data.session;
-          console.log('✅ Sessão detectada:', session.user.id);
           break;
         }
-        await new Promise(r => setTimeout(r, 1500));
+        lastError = error;
+        await new Promise(r => setTimeout(r, 1000));
       }
 
       if (!session) {
-        throw new Error('Link de acesso expirado ou inválido. Por favor, tente clicar novamente no link que enviamos por e-mail.');
+        console.error('❌ Falha na sessão:', lastError);
+        throw new Error('Não foi possível validar seu login automático. Por favor, feche esta aba e clique novamente no link do seu e-mail.');
       }
 
-      // 2. Atualiza a senha
+      // 2. Atualização de Senha com Retry Interno
       console.log('📡 Salvando nova senha...');
       setStatusMessage('Salvando senha...');
       
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: password
-      });
+      let updateResult = null;
+      let attempts = 0;
+      const maxAttempts = 2;
+
+      while (attempts < maxAttempts) {
+        try {
+          const { data, error } = await supabase.auth.updateUser({ 
+            password: password 
+          });
+          
+          if (error) {
+            // Se o erro for que a senha é igual, ignoramos e seguimos
+            if (error.message.includes('New password should be different')) {
+              updateResult = { data, error: null };
+              break;
+            }
+            throw error;
+          }
+          
+          updateResult = { data, error: null };
+          break;
+        } catch (err: any) {
+          attempts++;
+          console.warn(`⚠️ Tentativa ${attempts} falhou:`, err.message);
+          if (attempts >= maxAttempts) throw err;
+          setStatusMessage('Reestabelecendo conexão...');
+          await new Promise(r => setTimeout(r, 2000));
+        }
+      }
 
       clearTimeout(safetyTimeout);
-
-      if (updateError) {
-        console.error('❌ Erro Supabase:', updateError);
-        if (updateError.message.includes('New password should be different')) {
-          setIsSuccess(true);
-          setTimeout(() => onSuccess(), 1500);
-          return;
-        }
-        throw updateError;
-      }
-
       console.log('🎉 Senha alterada com sucesso!');
-      setStatusMessage('Tudo pronto!');
+      setStatusMessage('Conta ativada!');
       setIsSuccess(true);
       
-      try {
-        window.history.replaceState(null, '', window.location.pathname);
-      } catch (e) {
-        console.warn('Hash cleanup failed:', e);
-      }
+      window.history.replaceState(null, '', window.location.pathname);
 
       setTimeout(() => {
         onSuccess();
@@ -99,7 +114,13 @@ export const SetPasswordModal = ({ isOpen, onSuccess }: SetPasswordModalProps) =
     } catch (err: any) {
       clearTimeout(safetyTimeout);
       console.error('🔴 ERRO NO FLOW:', err);
-      setError(err.message || 'Erro ao definir senha. Tente novamente.');
+      
+      let errorMessage = err.message || 'Erro ao definir senha.';
+      if (err.message?.includes('JWT') || err.status === 401) {
+        errorMessage = 'Sessão expirada. Por favor, reabra o link do e-mail.';
+      }
+      
+      setError(errorMessage);
       setIsLoading(false);
     }
   };
