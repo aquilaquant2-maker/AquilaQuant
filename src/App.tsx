@@ -89,7 +89,9 @@ export default function App() {
       } else if (event === 'SIGNED_IN' && (isSpecialFlow || window.location.hash.includes('access_token'))) {
         setIsSetPasswordOpen(true);
         setHasEntered(true);
-      } else if (event === 'USER_UPDATED' && isSetPasswordOpen) {
+      } else if (event === 'USER_UPDATED') {
+        // Se a senha foi atualizada, fechamos o modal forçadamente
+        console.log('✅ Usuário atualizado, fechando modal de senha...');
         setIsSetPasswordOpen(false);
         setHasEntered(true);
         try {
@@ -98,7 +100,6 @@ export default function App() {
           window.location.hash = '';
         }
       } else if (session && !hasEntered) {
-        // Se temos sessão mas ainda estamos na landing, deixa entrar
         setHasEntered(true);
       }
     });

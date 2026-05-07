@@ -61,7 +61,7 @@ export const SetPasswordModal = ({ isOpen, onSuccess }: SetPasswordModalProps) =
            const access = params.get('access_token');
            const refresh = params.get('refresh_token');
            if (access && refresh) {
-             const { error: setErr } = await supabase.auth.setSession({ access_token: access, refresh_token: refresh });
+             const { error: setErr } = await supabase.auth.setSession({ access_token: access!, refresh_token: refresh! });
              if (setErr) console.warn('SetSession error:', setErr);
            }
         } else {
@@ -69,57 +69,57 @@ export const SetPasswordModal = ({ isOpen, onSuccess }: SetPasswordModalProps) =
         }
       }
 
-      // 2. Atualização Atômica de Senha
+      // 2. Listener de Emergência (Detecta o sucesso via evento se a promessa travar)
+      let resolved = false;
+      
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+        if (event === 'USER_UPDATED' && !resolved) {
+          console.log('✅ Sucesso detectado via Auth Event!');
+          handleSuccess();
+        }
+      });
+
+      const handleSuccess = () => {
+        if (resolved) return;
+        resolved = true;
+        if (subscription) subscription.unsubscribe();
+        clearTimeout(safetyTimeout);
+        
+        setStatusMessage('Sucesso!');
+        setIsSuccess(true);
+        console.log('🎉 Finalizando flow de senha...');
+        
+        try {
+          window.history.replaceState(null, '', window.location.pathname);
+        } catch (e) {
+          window.location.hash = '';
+        }
+
+        setTimeout(() => {
+          onSuccess();
+        }, 1000);
+      };
+
+      // 3. Atualização Atômica de Senha
       console.log('📡 Salvando nova senha...');
       setStatusMessage('Protegendo conta...');
       
-      // Tentativa 1: SDK Oficial
       const { error: updateError } = await supabase.auth.updateUser({ 
         password: password 
       });
 
       if (updateError) {
-        console.warn('⚠️ Erro no updateUser oficial, tentando fallback direto...', updateError);
+        // Se já resolveu via listener, não joga erro
+        if (resolved) return;
         
-        // Tentativa 2: API Rest Direta (Bypass SDK overhead/conflicts)
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        if (currentSession) {
-          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/auth/v1/user`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${currentSession.access_token}`
-            },
-            body: JSON.stringify({ password })
-          });
-          
-          if (!response.ok) {
-            const errData = await response.json();
-            if (!errData.message?.includes('New password should be different')) {
-              throw new Error(errData.message || 'Falha crítica na atualização de segurança.');
-            }
-          }
-        } else {
-          throw updateError;
+        if (updateError.message?.includes('New password should be different')) {
+          handleSuccess();
+          return;
         }
+        throw updateError;
       }
 
-      clearTimeout(safetyTimeout);
-      console.log('🎉 Operação concluída!');
-      setStatusMessage('Sucesso!');
-      setIsSuccess(true);
-      
-      // Remove tokens da URL para evitar loops
-      try {
-        window.history.replaceState(null, '', window.location.pathname);
-      } catch (e) {
-        window.location.hash = '';
-      }
-
-      setTimeout(() => {
-        onSuccess();
-      }, 1500);
+      handleSuccess();
     } catch (err: any) {
       clearTimeout(safetyTimeout);
       console.error('🔴 ERRO FATAL NO MODAL:', err);
