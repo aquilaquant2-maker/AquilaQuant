@@ -17,6 +17,8 @@ export const SetPasswordModal = ({ isOpen, onSuccess }: SetPasswordModalProps) =
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
 
+  const [statusMessage, setStatusMessage] = useState('');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -34,23 +36,45 @@ export const SetPasswordModal = ({ isOpen, onSuccess }: SetPasswordModalProps) =
 
     setIsLoading(true);
     setError(null);
+    setStatusMessage('Iniciando...');
+
+    const safetyTimeout = setTimeout(() => {
+      setIsLoading(false);
+      setError('A conexão com o servidor expirou. Por favor, tente recarregar a página e clicar no link do e-mail novamente.');
+    }, 25000);
 
     try {
-      // 1. Verifica sessão atual
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // 1. Garante que a sessão foi estabelecida (Wait for session exchange)
+      console.log('🔄 Verificando sessão ativa...');
+      let session = null;
       
-      if (sessionError) throw sessionError;
-      
-      if (!session) {
-        throw new Error('Sessão expirada ou inválida. Por favor, tente clicar novamente no link do seu e-mail.');
+      for (let i = 0; i < 6; i++) {
+        setStatusMessage(i === 0 ? 'Verificando acesso...' : 'Sincronizando segurança...');
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          session = data.session;
+          console.log('✅ Sessão detectada:', session.user.id);
+          break;
+        }
+        await new Promise(r => setTimeout(r, 1500));
       }
 
-      // 2. Tenta atualizar a senha
+      if (!session) {
+        throw new Error('Link de acesso expirado ou inválido. Por favor, tente clicar novamente no link que enviamos por e-mail.');
+      }
+
+      // 2. Atualiza a senha
+      console.log('📡 Salvando nova senha...');
+      setStatusMessage('Salvando senha...');
+      
       const { error: updateError } = await supabase.auth.updateUser({
         password: password
       });
 
+      clearTimeout(safetyTimeout);
+
       if (updateError) {
+        console.error('❌ Erro Supabase:', updateError);
         if (updateError.message.includes('New password should be different')) {
           setIsSuccess(true);
           setTimeout(() => onSuccess(), 1500);
@@ -59,10 +83,10 @@ export const SetPasswordModal = ({ isOpen, onSuccess }: SetPasswordModalProps) =
         throw updateError;
       }
 
-      // 3. Sucesso
+      console.log('🎉 Senha alterada com sucesso!');
+      setStatusMessage('Tudo pronto!');
       setIsSuccess(true);
       
-      // Limpa tokens da URL
       try {
         window.history.replaceState(null, '', window.location.pathname);
       } catch (e) {
@@ -73,7 +97,8 @@ export const SetPasswordModal = ({ isOpen, onSuccess }: SetPasswordModalProps) =
         onSuccess();
       }, 1500);
     } catch (err: any) {
-      console.error('ERRO DETALHADO:', err);
+      clearTimeout(safetyTimeout);
+      console.error('🔴 ERRO NO FLOW:', err);
       setError(err.message || 'Erro ao definir senha. Tente novamente.');
       setIsLoading(false);
     }
@@ -172,12 +197,15 @@ export const SetPasswordModal = ({ isOpen, onSuccess }: SetPasswordModalProps) =
                 type="submit"
                 disabled={isLoading}
                 className={cn(
-                  "w-full bg-trading-green text-black font-black uppercase text-[11px] tracking-widest py-4 rounded-2xl shadow-lg shadow-trading-green/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-4",
-                  isLoading && "opacity-50 cursor-not-allowed"
+                  "w-full bg-trading-green text-black font-black uppercase text-[11px] tracking-widest py-4 rounded-2xl shadow-lg shadow-trading-green/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 mt-4",
+                  isLoading && "opacity-80 cursor-not-allowed"
                 )}
               >
                 {isLoading ? (
-                  <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                  <>
+                    <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                    <span>{statusMessage}</span>
+                  </>
                 ) : (
                   <>
                     Definir Senha e Acessar

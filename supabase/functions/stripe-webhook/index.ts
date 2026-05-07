@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import Stripe from 'https://esm.sh/stripe@12.0.0?target=deno'
+import Stripe from 'https://esm.sh/stripe@12.9.0?target=deno'
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
   apiVersion: '2022-11-15',
@@ -20,18 +20,21 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.text()
+    const body = await req.text() // Usamos text() para constructEventAsync
     const endpointSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')
     
     let event
     try {
+      // ✅ A chave para funcionar no Edge: constructEventAsync + SubtleCryptoProvider
       event = await stripe.webhooks.constructEventAsync(
         body,
         signature,
-        endpointSecret ?? ''
+        endpointSecret ?? '',
+        undefined,
+        Stripe.createSubtleCryptoProvider()
       )
     } catch (err) {
-      console.error(`Webhook signature verification failed: ${err.message}`)
+      console.error(`❌ Webhook signature verification failed: ${err.message}`)
       return new Response(`Webhook Error: ${err.message}`, { status: 400 })
     }
 
@@ -42,6 +45,13 @@ serve(async (req) => {
       const customerEmail = session.customer_details?.email
       const customerName = session.customer_details?.name || ''
       
+      if (!customerEmail) {
+        return new Response('No customer email', { status: 400 })
+      }
+
+      console.log(`🚀 Processando checkout: ${customerEmail}`)
+
+      // 1. Determina o plano baseado no Price ID
       let planType = 'B3'
       const lineItems = await stripe.checkout.sessions.listLineItems(session.id)
       const priceId = lineItems.data[0]?.price?.id
@@ -49,70 +59,76 @@ serve(async (req) => {
       if (priceId === 'price_1TU6lSDlA9wB0KdoYrqhYI0o') planType = 'Elite'
       else if (priceId === 'price_1TU6jNDlA9wB0KdoS9aGM4p7') planType = 'Forex'
 
-      let accessTags = [planType]
+      let accessTagsToAdd = [planType]
       if (planType === 'Elite') {
-        accessTags = ['B3', 'Forex']
+        accessTagsToAdd = ['B3', 'Forex']
       }
 
-      if (customerEmail) {
-        console.log(`🚀 Processando checkout para: ${customerEmail}`)
+      // 2. Busca perfil existente
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id, access_tags')
+        .eq('email', customerEmail)
+        .maybeSingle()
 
-        // 1. Verifica se já processamos este e-mail recentemente com este plano (Idempotência Básica)
-        const { data: existingProfile } = await supabase
-          .from('profiles')
-          .select('id, access_tags')
-          .eq('email', customerEmail)
-          .single()
+      // Idempotência: Se já tem as tags, sucesso.
+      if (existingProfile && accessTagsToAdd.every(tag => existingProfile.access_tags?.includes(tag))) {
+        console.log(`✅ Usuário ${customerEmail} já possui todos os acessos.`)
+        return new Response(JSON.stringify({ received: true }), { status: 200 })
+      }
 
-        if (existingProfile && existingProfile.access_tags?.includes(planType)) {
-          console.log(`✅ Usuário ${customerEmail} já possui o plano ${planType}. Pulando processamento redundante.`)
-          return new Response(JSON.stringify({ received: true, already_processed: true }), { status: 200 })
-        }
+      let userId = existingProfile?.id
 
-        // 2. Verifica se o usuário já existe no Auth
-        const { data: { users }, error: listError } = await supabase.auth.admin.listUsers()
-        const existingUser = users?.find(u => u.email === customerEmail)
-        
-        let userId = existingUser?.id
+      // 3. Se não temos perfil, verifica no Auth (evita duplicar convite se o usuário deletou o perfil mas ficou no auth)
+      if (!userId) {
+        const { data: { users } } = await supabase.auth.admin.listUsers()
+        userId = users.find(u => u.email === customerEmail)?.id
+      }
 
-        if (!existingUser) {
-          console.log(`✉️ Enviando convite para novo usuário: ${customerEmail}`)
-          // 3. Tenta convidar - Se já existir (race condition), o Supabase retorna erro amigável
-          const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(customerEmail, {
-            data: { full_name: customerName, plan_type: planType },
-            redirectTo: 'https://dailydolar.com.br/'
-          })
+      // 4. Se o usuário NÃO existe no Auth, envia convite
+      if (!userId) {
+        console.log(`✉️ Novo usuário. Enviando link de ativação para: ${customerEmail}`)
+        const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(customerEmail, {
+          data: { full_name: customerName, plan_type: planType },
+          redirectTo: 'https://dailydolar.com.br/' 
+        })
 
-          if (inviteError && !inviteError.message?.includes('already has an account')) {
-            console.error('❌ Erro fatal no convite:', inviteError)
+        if (inviteError) {
+          if (inviteError.message?.includes('already has an account')) {
+            // Caso raro de race condition
+            const { data: { users } } = await supabase.auth.admin.listUsers()
+            userId = users.find(u => u.email === customerEmail)?.id
+          } else {
+            console.error('❌ Erro ao convidar:', inviteError)
             throw inviteError
           }
-          userId = inviteData?.user?.id
         } else {
-          console.log(`👤 Usuário já existe no Auth: ${userId}. Atualizando perfil.`)
+          userId = inviteData?.user?.id
+          console.log(`✉️ Convite enviado com sucesso.`)
         }
+      } else {
+        console.log(`👤 Usuário já existia no sistema (ID: ${userId}).`)
+      }
 
-        if (userId) {
-          // 4. Garante que o perfil existe e tem as tags corretas
-          // Mesclamos as tags existentes se houver
-          const currentTags = existingProfile?.access_tags || []
-          const newTags = Array.from(new Set([...currentTags, ...accessTags]))
+      // 5. Garante que o perfil está atualizado com as tags
+      if (userId) {
+        const currentTags = existingProfile?.access_tags || []
+        const updatedTags = Array.from(new Set([...currentTags, ...accessTagsToAdd]))
 
-          const { error: upsertError } = await supabase.from('profiles').upsert({
-            id: userId,
-            email: customerEmail,
-            full_name: customerName,
-            access_tags: newTags,
-            updated_at: new Date().toISOString()
-          })
+        const { error: upsertError } = await supabase.from('profiles').upsert({
+          id: userId,
+          email: customerEmail,
+          full_name: customerName,
+          access_tags: updatedTags,
+          updated_at: new Date().toISOString()
+        })
 
-          if (upsertError) {
-            console.error('❌ Erro ao atualizar perfil:', upsertError)
-            throw upsertError
-          }
-          
-          console.log(`✅ Acesso liberado/atualizado para ${customerEmail} (ID: ${userId})`)
+        if (upsertError) {
+          console.error('❌ Erro no upsert do perfil:', upsertError)
+          throw upsertError
         }
+        
+        console.log(`✅ Acesso liberado: ${customerEmail} | Tags: ${updatedTags.join(', ')}`)
       }
     }
 
@@ -121,7 +137,8 @@ serve(async (req) => {
       headers: { 'Content-Type': 'application/json' }
     })
   } catch (err) {
-    console.error(`❌ Erro no processamento do Webhook: ${err.message}`)
+    console.error(`❌ ERRO FATAL: ${err.message}`)
     return new Response(`Webhook Error: ${err.message}`, { status: 500 })
   }
 })
+
