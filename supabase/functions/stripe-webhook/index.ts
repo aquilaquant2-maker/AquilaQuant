@@ -55,38 +55,63 @@ serve(async (req) => {
       }
 
       if (customerEmail) {
-        console.log(`🚀 Processando: ${customerEmail}`)
+        console.log(`🚀 Processando checkout para: ${customerEmail}`)
 
-        // 1. Tenta convidar - Se já existir, o Supabase retorna erro amigável
-        const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(customerEmail, {
-          data: { full_name: customerName, plan_type: planType },
-          redirectTo: 'https://dailydolar.com.br/'
-        })
+        // 1. Verifica se já processamos este e-mail recentemente com este plano (Idempotência Básica)
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('id, access_tags')
+          .eq('email', customerEmail)
+          .single()
 
-        // Se o erro for que o usuário já existe, não paramos o processo
-        const userExists = inviteError?.message?.includes('already has an account') || inviteError?.status === 422
-        
-        if (inviteError && !userExists) {
-          console.error('❌ Erro fatal no convite:', inviteError)
-          throw inviteError
+        if (existingProfile && existingProfile.access_tags?.includes(planType)) {
+          console.log(`✅ Usuário ${customerEmail} já possui o plano ${planType}. Pulando processamento redundante.`)
+          return new Response(JSON.stringify({ received: true, already_processed: true }), { status: 200 })
         }
 
-        const userId = inviteData?.user?.id || (await supabase.auth.admin.listUsers()).data.users.find(u => u.email === customerEmail)?.id
+        // 2. Verifica se o usuário já existe no Auth
+        const { data: { users }, error: listError } = await supabase.auth.admin.listUsers()
+        const existingUser = users?.find(u => u.email === customerEmail)
+        
+        let userId = existingUser?.id
+
+        if (!existingUser) {
+          console.log(`✉️ Enviando convite para novo usuário: ${customerEmail}`)
+          // 3. Tenta convidar - Se já existir (race condition), o Supabase retorna erro amigável
+          const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(customerEmail, {
+            data: { full_name: customerName, plan_type: planType },
+            redirectTo: 'https://dailydolar.com.br/'
+          })
+
+          if (inviteError && !inviteError.message?.includes('already has an account')) {
+            console.error('❌ Erro fatal no convite:', inviteError)
+            throw inviteError
+          }
+          userId = inviteData?.user?.id
+        } else {
+          console.log(`👤 Usuário já existe no Auth: ${userId}. Atualizando perfil.`)
+        }
 
         if (userId) {
-          // Atualiza ou cria o perfil - Usando try/catch para não quebrar a function se a tabela falhar
-          try {
-            await supabase.from('profiles').upsert({
-              id: userId,
-              email: customerEmail,
-              full_name: customerName,
-              access_tags: accessTags,
-              updated_at: new Date().toISOString()
-            })
-            console.log(`✅ Acesso liberado para ${userId}`)
-          } catch (e) {
-            console.warn('⚠️ Perfil não pôde ser atualizado, mas o convite foi enviado:', e.message)
+          // 4. Garante que o perfil existe e tem as tags corretas
+          // Mesclamos as tags existentes se houver
+          const currentTags = existingProfile?.access_tags || []
+          const newTags = Array.from(new Set([...currentTags, ...accessTags]))
+
+          const { error: upsertError } = await supabase.from('profiles').upsert({
+            id: userId,
+            email: customerEmail,
+            full_name: customerName,
+            access_tags: newTags,
+            updated_at: new Date().toISOString()
+          })
+
+          if (upsertError) {
+            console.error('❌ Erro ao atualizar perfil:', upsertError)
+            throw upsertError
           }
+          
+          console.log(`✅ Acesso liberado/atualizado para ${customerEmail} (ID: ${userId})`)
         }
       }
     }

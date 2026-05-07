@@ -15,6 +15,7 @@ export const SetPasswordModal = ({ isOpen, onSuccess }: SetPasswordModalProps) =
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,20 +52,29 @@ export const SetPasswordModal = ({ isOpen, onSuccess }: SetPasswordModalProps) =
 
       if (updateError) {
         if (updateError.message.includes('New password should be different')) {
-          // Se o usuário tentar colocar a mesma senha (raro em convite, mas possível)
-          onSuccess();
+          setIsSuccess(true);
+          setTimeout(() => onSuccess(), 1500);
           return;
         }
         throw updateError;
       }
 
-      // 3. Sucesso - o App.tsx vai detectar o 'USER_UPDATED' e fechar
-      // Mas chamamos onSuccess() por segurança
-      onSuccess();
+      // 3. Sucesso
+      setIsSuccess(true);
+      
+      // Limpa tokens da URL
+      try {
+        window.history.replaceState(null, '', window.location.pathname);
+      } catch (e) {
+        console.warn('Hash cleanup failed:', e);
+      }
+
+      setTimeout(() => {
+        onSuccess();
+      }, 1500);
     } catch (err: any) {
       console.error('ERRO DETALHADO:', err);
       setError(err.message || 'Erro ao definir senha. Tente novamente.');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -87,7 +97,21 @@ export const SetPasswordModal = ({ isOpen, onSuccess }: SetPasswordModalProps) =
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="relative w-full max-w-md glass-card rounded-[2.5rem] border border-white/10 bg-[#0a0a0c] p-8 md:p-10 shadow-2xl"
           >
-            <div className="flex flex-col items-center text-center mb-8">
+            {isSuccess ? (
+              <div className="flex flex-col items-center text-center py-12">
+                <motion.div 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="w-20 h-20 bg-trading-green rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(0,255,157,0.3)]"
+                >
+                  <ShieldCheck className="w-10 h-10 text-black" />
+                </motion.div>
+                <h2 className="text-2xl font-black text-white tracking-tight mb-2">Acesso Confirmado!</h2>
+                <p className="text-zinc-500 text-sm font-medium">Sua conta foi ativada com sucesso. Redirecionando...</p>
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-col items-center text-center mb-8">
               <div className="w-16 h-16 bg-trading-green/10 rounded-2xl flex items-center justify-center mb-6 border border-trading-green/20">
                 <ShieldCheck className="w-8 h-8 text-trading-green" />
               </div>
@@ -162,6 +186,8 @@ export const SetPasswordModal = ({ isOpen, onSuccess }: SetPasswordModalProps) =
                 )}
               </button>
             </form>
+            </>
+            )}
 
             <p className="text-[8px] text-zinc-600 font-bold text-center mt-8 uppercase tracking-widest">
               Segurança Criptografada de Ponta a Ponta
