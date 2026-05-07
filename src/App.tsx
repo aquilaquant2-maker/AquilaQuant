@@ -87,6 +87,11 @@ export default function App() {
         // Se entrou via flow especial e acabou de logar, garante que o modal está aberto
         setIsSetPasswordOpen(true);
         setHasEntered(true);
+      } else if (event === 'USER_UPDATED' && isSetPasswordOpen) {
+        // Se a senha foi atualizada com sucesso, fechamos o modal
+        setIsSetPasswordOpen(false);
+        setHasEntered(true);
+        window.location.hash = '';
       }
     });
 

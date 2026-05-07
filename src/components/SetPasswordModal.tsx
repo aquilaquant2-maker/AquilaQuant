@@ -32,32 +32,38 @@ export const SetPasswordModal = ({ isOpen, onSuccess }: SetPasswordModalProps) =
     }
 
     setIsLoading(true);
+    setError(null);
 
     try {
-      // Garante que o Supabase processou a sessão do link
-      const { data: { session } } = await supabase.auth.getSession();
+      // 1. Verifica sessão atual
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) throw sessionError;
       
       if (!session) {
-        // Tenta esperar um pouco mais se a sessão ainda não estiver lá (race condition)
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const { data: { session: retrySession } } = await supabase.auth.getSession();
-        if (!retrySession) {
-          throw new Error('Sessão de autenticação não encontrada. Por favor, recarregue a página ou use o link de convite novamente.');
-        }
+        throw new Error('Sessão expirada ou inválida. Por favor, tente clicar novamente no link do seu e-mail.');
       }
 
+      // 2. Tenta atualizar a senha
       const { error: updateError } = await supabase.auth.updateUser({
         password: password
       });
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        if (updateError.message.includes('New password should be different')) {
+          // Se o usuário tentar colocar a mesma senha (raro em convite, mas possível)
+          onSuccess();
+          return;
+        }
+        throw updateError;
+      }
 
-      // Limpa os tokens da URL para evitar re-trigger
-      window.history.replaceState(null, '', window.location.pathname);
+      // 3. Sucesso - o App.tsx vai detectar o 'USER_UPDATED' e fechar
+      // Mas chamamos onSuccess() por segurança
       onSuccess();
     } catch (err: any) {
-      console.error('Erro ao definir senha:', err);
-      setError(err.message || 'Ocorreu um erro ao atualizar sua senha.');
+      console.error('ERRO DETALHADO:', err);
+      setError(err.message || 'Erro ao definir senha. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
