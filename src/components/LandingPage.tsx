@@ -55,14 +55,22 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
         return;
       }
 
-      const response = await fetch('/api/create-checkout', {
+      // Tenta usar a Supabase Edge Function se as chaves estiverem configuradas
+      const apiEndpoint = import.meta.env.VITE_SUPABASE_URL 
+        ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout` 
+        : '/api/create-checkout';
+
+      const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(import.meta.env.VITE_SUPABASE_ANON_KEY ? { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` } : {}),
         },
-        body: JSON.stringify({
+        body: JSON.stringify({ 
           priceId,
-          email: user?.email,
+          customerEmail: user?.email,
+          successUrl: `${window.location.origin}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: window.location.origin
         }),
       });
 

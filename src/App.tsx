@@ -20,7 +20,7 @@ import { AccessGate } from './components/AccessGate';
 import { SetPasswordModal } from './components/SetPasswordModal';
 import { SUPPORTED_ASSETS } from './constants/assets';
 import { Bitcoin, Cpu, Zap, ChevronDown, Shield, Lock, Loader2 } from 'lucide-react';
-import { checkSupabaseConnection } from './lib/supabaseClient';
+import { checkSupabaseConnection, supabase } from './lib/supabaseClient';
 import { useAuth } from './hooks/useAuth';
 
 const btcData = [{value: 40}, {value: 35}, {value: 55}, {value: 45}, {value: 70}, {value: 60}, {value: 90}];
@@ -71,18 +71,15 @@ export default function App() {
   
   useEffect(() => {
     // Interceptor para convites e recuperação de senha (Silent Onboarding)
-    const handleAuthHash = () => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       const hash = window.location.hash;
-      if (hash && (hash.includes('type=invite') || hash.includes('type=recovery') || hash.includes('access_token='))) {
-        // Se houver token na URL, abrimos o modal de senha e garantimos que o usuário "entrou" no app
+      if (event === 'PASSWORD_RECOVERY' || hash.includes('type=invite') || hash.includes('type=recovery') || hash.includes('access_token=')) {
         setIsSetPasswordOpen(true);
         setHasEntered(true);
       }
-    };
+    });
 
-    handleAuthHash();
-    window.addEventListener('hashchange', handleAuthHash);
-    return () => window.removeEventListener('hashchange', handleAuthHash);
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
