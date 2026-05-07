@@ -34,6 +34,18 @@ export const SetPasswordModal = ({ isOpen, onSuccess }: SetPasswordModalProps) =
     setIsLoading(true);
 
     try {
+      // Garante que o Supabase processou a sessão do link
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        // Tenta esperar um pouco mais se a sessão ainda não estiver lá (race condition)
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const { data: { session: retrySession } } = await supabase.auth.getSession();
+        if (!retrySession) {
+          throw new Error('Sessão de autenticação não encontrada. Por favor, recarregue a página ou use o link de convite novamente.');
+        }
+      }
+
       const { error: updateError } = await supabase.auth.updateUser({
         password: password
       });

@@ -71,21 +71,20 @@ export default function App() {
   
   useEffect(() => {
     // Interceptor para convites e recuperação de senha (Silent Onboarding)
-    const checkHash = () => {
-      const hash = window.location.hash;
-      if (hash && (hash.includes('type=invite') || hash.includes('type=recovery') || hash.includes('access_token='))) {
+    const hash = window.location.hash;
+    const isSpecialFlow = hash && (hash.includes('type=invite') || hash.includes('type=recovery') || hash.includes('access_token='));
+
+    if (isSpecialFlow) {
+      setIsSetPasswordOpen(true);
+      setHasEntered(true);
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
         setIsSetPasswordOpen(true);
         setHasEntered(true);
-        return true;
-      }
-      return false;
-    };
-
-    // Verifica imediatamente no carregamento
-    checkHash();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && checkHash())) {
+      } else if (event === 'SIGNED_IN' && isSpecialFlow) {
+        // Se entrou via flow especial e acabou de logar, garante que o modal está aberto
         setIsSetPasswordOpen(true);
         setHasEntered(true);
       }
