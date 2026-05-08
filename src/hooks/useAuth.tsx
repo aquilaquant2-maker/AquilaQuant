@@ -45,16 +45,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return normalizedTags.includes(normalizedRequired);
   };
 
-  const authStateRef = React.useRef(authState);
-  useEffect(() => {
-    authStateRef.current = authState;
-  }, [authState]);
-
   useEffect(() => {
     let isMounted = true;
 
-    // Direct listener for auth changes - standard practice
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    // Função para tratar sessões de forma centralizada
+    const handleSession = async (session: Session | null) => {
       if (!session) {
         if (isMounted) {
           setAuthState({
@@ -69,49 +64,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      if (session?.user) {
-        // Evitamos setar loading se o usuário for o mesmo e já tivermos dados
-        const currentUser = authStateRef.current.user;
-        const currentTags = authStateRef.current.accessTags;
-        const shouldSetLoading = !currentUser || currentUser.id !== session.user.id || (currentTags.length === 0 && !authStateRef.current.isAdmin);
-        
-        if (isMounted && shouldSetLoading) {
-          setAuthState(prev => ({ ...prev, loading: true }));
-        }
+      const isFounder = session.user.email?.toLowerCase() === 'aquilaquant2@gmail.com';
+      
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role, access_tags')
+          .eq('id', session.user.id)
+          .maybeSingle();
 
-        const isFounder = session.user.email?.toLowerCase() === 'aquilaquant2@gmail.com';
-        
-        try {
-          // Fetch profile data
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role, access_tags')
-            .eq('id', session.user.id)
-            .maybeSingle();
-
-          if (isMounted) {
-            setAuthState({
-              user: session.user,
-              session: session,
-              isAdmin: isFounder || profile?.role === 'admin',
-              accessTags: profile?.access_tags || [],
-              loading: false,
-              isInitializing: false
-            });
-          }
-        } catch (error) {
-          console.error('AQUILA QUANT [Auth]: Error fetching profile:', error);
-          if (isMounted) {
-            setAuthState(prev => ({ 
-              ...prev, 
-              user: session.user, 
-              session: session,
-              isAdmin: isFounder,
-              loading: false, 
-              isInitializing: false 
-            }));
-          }
+        if (isMounted) {
+          setAuthState({
+            user: session.user,
+            session: session,
+            isAdmin: isFounder || profile?.role === 'admin',
+            accessTags: profile?.access_tags || [],
+            loading: false,
+            isInitializing: false
+          });
         }
+      } catch (error) {
+        console.error('AQUILA QUANT [Auth]: Error fetching profile:', error);
+        if (isMounted) {
+          setAuthState({ 
+            user: session.user, 
+            session: session,
+            isAdmin: isFounder,
+            accessTags: [],
+            loading: false, 
+            isInitializing: false 
+          });
+        }
+      }
+    };
+
+    // 1. Busca a sessão inicial IMEDIATAMENTE
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (isMounted) {
+        handleSession(session);
+      }
+    });
+
+    // 2. Listener para mudanças futuras
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (isMounted) {
+        handleSession(session);
       }
     });
 

@@ -147,13 +147,13 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
 
       let finalData = null;
 
-      // 3. TENTATIVA 1: Edge Function com Timeout Agressivo (6s)
+      // 3. TENTATIVA 1: Edge Function com Timeout Agressivo (10s)
       try {
         const response: any = await Promise.race([
           supabase.functions.invoke('calculate-regions', {
             body: { assetSymbol: normalizedSymbol, abertura: cleanOpening }
           }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 6000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 10000))
         ]);
         
         if (response && response.data && !response.data.error) {
@@ -168,15 +168,16 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
 
       // 4. TENTATIVA 2: Fallback Direto via Database (SSOT)
       if (!finalData) {
+        const altSymbol = normalizedSymbol.split('/')[0];
         const { data: metrics, error: mError }: any = await Promise.race([
           supabase
             .from('asset_historical_metrics')
             .select('*')
-            .or(`asset_symbol.eq.${normalizedSymbol},asset_symbol.eq.${assetCode}`)
+            .or(`asset_symbol.eq.${normalizedSymbol},asset_symbol.eq.${assetCode},asset_symbol.eq.${altSymbol}`)
             .order('updated_at', { ascending: false })
             .limit(1)
             .maybeSingle(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('DB_TIMEOUT')), 6000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('DB_TIMEOUT')), 8000))
         ]);
 
         if (mError) {
@@ -566,9 +567,9 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
                     </div>
                  </div>
               </div>
-              <div className="h-[250px] md:h-[300px] w-full">
+              <div className="h-[300px] md:h-[350px] w-full min-h-[300px] relative">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={performanceUnlocked ? mockChartData : []}>
+                  <AreaChart data={performanceUnlocked && mockChartData.length > 0 ? mockChartData : [{ name: '0', a: 0, b: 0 }]}>
                     <defs>
                       <linearGradient id="colorA" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#00ff9d" stopOpacity={0.1}/>
@@ -597,9 +598,9 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
               {/* Pontos */}
               <div className="glass-card rounded-[2rem] p-6 border border-white/5 bg-white/[0.01] flex flex-col">
                  <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-6 text-center">Pontos Acumulados</h4>
-                 <div className="flex-1">
+                 <div className="flex-1 min-h-[150px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={pointsData}>
+                      <BarChart data={pointsData.length > 0 ? pointsData : [{ name: 'Init', value: 0, model: '?' }]}>
                         <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                            {pointsData.map((entry, index) => (
                              <Cell key={`cell-${index}`} fill={entry.model === 'A' ? '#00ff9d' : '#3b82f6'} />
@@ -629,9 +630,9 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
               {/* Assertividade */}
               <div className="glass-card rounded-[2rem] p-6 border border-white/5 bg-white/[0.01] flex flex-col">
                  <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-6 text-center">Assertividade</h4>
-                 <div className="flex-1">
+                 <div className="flex-1 min-h-[150px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={assertivenessData}>
+                      <BarChart data={assertivenessData.length > 0 ? assertivenessData : [{ name: 'Init', value: 0 }]}>
                         <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                            {assertivenessData.map((entry, index) => (
                              <Cell key={`cell-${index}`} fill={entry.name === 'A' ? '#00ff9d' : '#3b82f6'} />
@@ -651,9 +652,9 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
               {/* R-Múltiplos */}
               <div className="glass-card rounded-[2rem] p-6 border border-white/5 bg-white/[0.01] flex flex-col">
                  <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-6 text-center">R-Múltiplos</h4>
-                 <div className="flex-1">
+                 <div className="flex-1 min-h-[150px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={rMultiplesData}>
+                      <BarChart data={rMultiplesData.length > 0 ? rMultiplesData : [{ name: 'Init', value: 0, model: '?' }]}>
                         <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                            {rMultiplesData.map((entry, index) => (
                              <Cell key={`cell-${index}`} fill={entry.model === 'A' ? '#00ff9d' : '#3b82f6'} />

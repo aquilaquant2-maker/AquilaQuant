@@ -32,6 +32,9 @@ const TradingViewEmbed = ({ scriptSrc, config, height = '400px' }: { scriptSrc: 
     return () => {
       if (currentContainer) {
         currentContainer.innerHTML = '';
+        // Remove scripts specifically to be thorough
+        const scripts = currentContainer.querySelectorAll('script');
+        scripts.forEach(s => s.remove());
       }
     };
   }, [scriptSrc, JSON.stringify(config)]);

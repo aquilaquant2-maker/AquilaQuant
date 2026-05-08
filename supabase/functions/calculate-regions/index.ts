@@ -11,14 +11,15 @@ const corsHeaders = {
 serve(async (req) => {
   // Handle CORS Preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { 
-      status: 204, 
+    return new Response('ok', { 
+      status: 200, 
       headers: corsHeaders 
     })
   }
 
   try {
     let { assetSymbol, abertura } = await req.json()
+    console.log(`[Edge Function] Processing: ${assetSymbol} | Open: ${abertura}`)
 
     if (!assetSymbol || !abertura) {
       throw new Error('Símbolo do ativo e preço de abertura são obrigatórios.')
@@ -32,13 +33,30 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // 1. Buscar métricas do ativo
-    const { data: metrics, error: metricsError } = await supabase
+    // 1. Buscar métricas do ativo com fallback de símbolo
+    let { data: metrics, error: metricsError } = await supabase
       .from('asset_historical_metrics')
       .select('y_value, mean_b_value, freq_1_value, freq_2_value')
       .eq('asset_symbol', assetSymbol)
       .limit(1)
       .maybeSingle()
+
+    if (!metrics && !metricsError) {
+      // Tenta variação sem o sufixo (WDO/DOL -> WDO)
+      const parts = assetSymbol.split('/');
+      if (parts.length > 1) {
+        console.log(`[Edge Function] Trying fallback: ${parts[0]}`);
+        const { data: fallbackMetrics, error: fallbackError } = await supabase
+          .from('asset_historical_metrics')
+          .select('y_value, mean_b_value, freq_1_value, freq_2_value')
+          .eq('asset_symbol', parts[0])
+          .limit(1)
+          .maybeSingle()
+        
+        metrics = fallbackMetrics;
+        metricsError = fallbackError;
+      }
+    }
 
     if (metricsError || !metrics) {
       throw new Error(`Métricas não encontradas para o ativo: ${assetSymbol}`)
