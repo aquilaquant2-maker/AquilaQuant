@@ -45,6 +45,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return normalizedTags.includes(normalizedRequired);
   };
 
+  const authStateRef = React.useRef(authState);
+  useEffect(() => {
+    authStateRef.current = authState;
+  }, [authState]);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -65,9 +70,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (session?.user) {
-        // Só define loading como true se for a primeira vez que estamos carregando este usuário
-        // ou se não tivermos os dados básicos ainda.
-        const shouldSetLoading = !authState.user || authState.user.id !== session.user.id;
+        // Evitamos setar loading se o usuário for o mesmo e já tivermos dados
+        const currentUser = authStateRef.current.user;
+        const currentTags = authStateRef.current.accessTags;
+        const shouldSetLoading = !currentUser || currentUser.id !== session.user.id || (currentTags.length === 0 && !authStateRef.current.isAdmin);
         
         if (isMounted && shouldSetLoading) {
           setAuthState(prev => ({ ...prev, loading: true }));

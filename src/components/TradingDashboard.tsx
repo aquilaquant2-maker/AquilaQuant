@@ -104,9 +104,20 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
 
   const handleCalculate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
+
     setShowError(false);
     setIsLoading(true);
     setCalcError(null);
+
+    const abortController = new AbortController();
+    const globalSafetyTimeout = setTimeout(() => {
+      if (isLoading) {
+        setIsLoading(false);
+        setCalcError('Tempo limite excedido. Tente novamente.');
+        abortController.abort();
+      }
+    }, 15000);
 
     try {
       // 1. Limpeza e validação do valor de abertura [Elite Standard]
@@ -127,7 +138,7 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
       const cleanOpening = cleanInput(opening);
       
       if (isNaN(cleanOpening)) {
-        throw new Error('O valor de abertura deve ser um número válido (Ex: 4.974,00 ou 5250.50)');
+        throw new Error('Valor de abertura inválido.');
       }
 
       const normalizedSymbol = assetCode.trim().toUpperCase();
@@ -136,40 +147,48 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
 
       let finalData = null;
 
-      // 3. TENTATIVA 1: Edge Function com Timeout Agressivo (2.5s)
+      // 3. TENTATIVA 1: Edge Function com Timeout Agressivo (6s)
       try {
-        const invokePromise = supabase.functions.invoke('calculate-regions', {
-          body: { assetSymbol: normalizedSymbol, abertura: cleanOpening }
-        });
-
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('TIMEOUT')), 5000)
-        );
-
-        const response: any = await Promise.race([invokePromise, timeoutPromise]);
+        const response: any = await Promise.race([
+          supabase.functions.invoke('calculate-regions', {
+            body: { assetSymbol: normalizedSymbol, abertura: cleanOpening }
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 6000))
+        ]);
         
         if (response && response.data && !response.data.error) {
+          console.log('✅ Edge Function OK');
           finalData = response.data;
+        } else if (response?.data?.error) {
+          console.warn('⚠️ Edge Function Error:', response.data.error);
         }
       } catch (fError) {
-        console.warn('AQUILA QUANT [System]: Edge Function lenta ou inexistente. Usando Fallback de Bancada...');
+        console.warn('AQUILA QUANT [System]: Fallback ativado...');
       }
 
       // 4. TENTATIVA 2: Fallback Direto via Database (SSOT)
       if (!finalData) {
-        // Buscamos metrics tanto pelo simbolo normalizado quanto pelo exato
-        const { data: metrics, error: mError } = await supabase
-          .from('asset_historical_metrics')
-          .select('*')
-          .or(`asset_symbol.eq.${normalizedSymbol},asset_symbol.eq.${assetCode}`)
-          .order('updated_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        const { data: metrics, error: mError }: any = await Promise.race([
+          supabase
+            .from('asset_historical_metrics')
+            .select('*')
+            .or(`asset_symbol.eq.${normalizedSymbol},asset_symbol.eq.${assetCode}`)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('DB_TIMEOUT')), 6000))
+        ]);
 
-        if (mError || !metrics) {
-          throw new Error('Tente novamente mais tarde');
+        if (mError) {
+          console.error('🔴 DB Error:', mError);
+          throw new Error('Falha na conexão com banco.');
         }
 
+        if (!metrics) {
+          throw new Error('Métricas não encontradas.');
+        }
+
+        console.log('🚀 Fallback OK');
         const y = metrics.y_value;
         const b = metrics.mean_b_value;
         const o = cleanOpening;
@@ -225,6 +244,7 @@ export const TradingDashboard = ({ assetName, assetCode, category }: TradingDash
       console.error('AQUILA QUANT [Calculation Error]:', err);
       setCalcError(err.message || 'Erro crítico no processamento.');
     } finally {
+      clearTimeout(globalSafetyTimeout);
       setIsLoading(false);
     }
   };

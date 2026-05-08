@@ -4,20 +4,27 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 }
 
 serve(async (req) => {
-  // Handle CORS
+  // Handle CORS Preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { 
+      status: 204, 
+      headers: corsHeaders 
+    })
   }
 
   try {
-    const { assetSymbol, abertura } = await req.json()
+    let { assetSymbol, abertura } = await req.json()
 
     if (!assetSymbol || !abertura) {
       throw new Error('Símbolo do ativo e preço de abertura são obrigatórios.')
     }
+
+    assetSymbol = assetSymbol.trim().toUpperCase()
 
     // Initialize Supabase Client
     const supabase = createClient(
@@ -28,9 +35,10 @@ serve(async (req) => {
     // 1. Buscar métricas do ativo
     const { data: metrics, error: metricsError } = await supabase
       .from('asset_historical_metrics')
-      .select('y_value, mean_b_value')
+      .select('y_value, mean_b_value, freq_1_value, freq_2_value')
       .eq('asset_symbol', assetSymbol)
-      .single()
+      .limit(1)
+      .maybeSingle()
 
     if (metricsError || !metrics) {
       throw new Error(`Métricas não encontradas para o ativo: ${assetSymbol}`)
@@ -80,6 +88,13 @@ serve(async (req) => {
             major_down: regions_down,
             intermediate_up: regions_up_half,
             intermediate_down: regions_down_half
+          },
+          frequency: {
+            a: Y / 2,
+            b: Y,
+            mean_b: B,
+            f1: metrics.freq_1_value || 0,
+            f2: metrics.freq_2_value || 0
           }
         },
         timestamp: new Date().toISOString()
