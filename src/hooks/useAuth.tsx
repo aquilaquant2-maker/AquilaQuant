@@ -65,8 +65,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (session?.user) {
-        // Se temos sessão mas ainda estamos carregando o perfil, garante que o estado reflita isso
-        if (isMounted) {
+        // Só define loading como true se for a primeira vez que estamos carregando este usuário
+        // ou se não tivermos os dados básicos ainda.
+        const shouldSetLoading = !authState.user || authState.user.id !== session.user.id;
+        
+        if (isMounted && shouldSetLoading) {
           setAuthState(prev => ({ ...prev, loading: true }));
         }
 

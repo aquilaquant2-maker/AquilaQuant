@@ -83,22 +83,26 @@ export default function App() {
     }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('🔐 Auth Event:', event);
+      // Evitamos logs excessivos no foco da aba se o estado for o mesmo
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+        // Redução radical de logs e ruído
+      } else {
+        console.log('🔐 Auth Event:', event);
+      }
       
       if (event === 'PASSWORD_RECOVERY') {
         setIsSetPasswordOpen(true);
-        setHasEntered(true);
+        if (!hasEntered) setHasEntered(true);
       } else if (event === 'SIGNED_IN') {
         const isAuthFlow = isSpecialFlow || window.location.hash.includes('access_token');
         if (isAuthFlow) {
           setIsSetPasswordOpen(true);
         }
-        setHasEntered(true);
+        if (!hasEntered) setHasEntered(true);
       } else if (event === 'USER_UPDATED') {
-        // Se a senha foi atualizada, fechamos o modal forçadamente
         console.log('✅ Usuário atualizado, fechando modal de senha...');
         setIsSetPasswordOpen(false);
-        setHasEntered(true);
+        if (!hasEntered) setHasEntered(true);
         try {
           window.history.replaceState(null, '', window.location.pathname);
         } catch (e) {

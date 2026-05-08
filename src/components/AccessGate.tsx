@@ -9,9 +9,11 @@ interface AccessGateProps {
 }
 
 export const AccessGate: React.FC<AccessGateProps> = ({ children, requiredTag }) => {
-  const { hasAccess, loading } = useAuth();
+  const { hasAccess, loading, user } = useAuth();
 
-  if (loading) {
+  // Só mostra loader se estiver carregando E não tivermos um usuário (primeiro carregamento)
+  // Se já temos usuário, permitimos que a UI permaneça estável enquanto o perfil é atualizado em background
+  if (loading && !user) {
     return (
       <div className="flex-1 flex items-center justify-center bg-[#050507]">
         <div className="w-12 h-12 border-4 border-trading-green/20 border-t-trading-green rounded-full animate-spin" />
