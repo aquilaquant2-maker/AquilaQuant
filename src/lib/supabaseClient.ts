@@ -21,7 +21,8 @@ export const supabase = createClient(
   supabaseAnonKey || '',
   {
     auth: {
-      persistSession: true,
+      persistSession: true, // Ainda mantemos true para que o SDK gerencie o estado na sessão ATUAL
+      storage: window.sessionStorage, // Troca localStorage por sessionStorage (Limpa ao fechar aba/navegador)
       autoRefreshToken: true,
       detectSessionInUrl: true
     },

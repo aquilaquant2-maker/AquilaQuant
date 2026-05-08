@@ -31,24 +31,26 @@ const bnbData = [{value: 80}, {value: 70}, {value: 85}, {value: 60}, {value: 75}
 interface ProtectedRouteProps {
   children: React.ReactNode;
   user: any;
+  loading: boolean;
   isInitializing: boolean;
   onEnter: () => void;
 }
 
-const ProtectedRoute = ({ children, user, isInitializing, onEnter }: ProtectedRouteProps) => {
-  if (isInitializing) {
+const ProtectedRoute = ({ children, user, loading, isInitializing, onEnter }: ProtectedRouteProps) => {
+  if (isInitializing || (loading && !user)) {
     return (
       <div className="h-screen w-full bg-[#050507] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Zap className="w-12 h-12 text-trading-green animate-pulse" />
           <Loader2 className="w-6 h-6 text-zinc-500 animate-spin" />
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-700">Iniciando Ambiente Seguro...</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-700">Validando Segurança do Ambiente...</p>
         </div>
       </div>
     );
   }
 
-  if (!user) {
+  // Só volta para a landing se não houver usuário E não estiver inicializando/carregando
+  if (!user && !isInitializing && !loading) {
     onEnter();
     return null;
   }
@@ -86,8 +88,11 @@ export default function App() {
       if (event === 'PASSWORD_RECOVERY') {
         setIsSetPasswordOpen(true);
         setHasEntered(true);
-      } else if (event === 'SIGNED_IN' && (isSpecialFlow || window.location.hash.includes('access_token'))) {
-        setIsSetPasswordOpen(true);
+      } else if (event === 'SIGNED_IN') {
+        const isAuthFlow = isSpecialFlow || window.location.hash.includes('access_token');
+        if (isAuthFlow) {
+          setIsSetPasswordOpen(true);
+        }
         setHasEntered(true);
       } else if (event === 'USER_UPDATED') {
         // Se a senha foi atualizada, fechamos o modal forçadamente
@@ -115,7 +120,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!user && hasEntered) {
+    // Só reseta o estado de entrada se REALMENTE não houver usuário e não estiver em processo de carregamento
+    if (!user && !loading && !isInitializing && hasEntered) {
       setHasEntered(false);
     }
 
@@ -126,7 +132,7 @@ export default function App() {
     if (isFirstLoad.current) {
       isFirstLoad.current = false;
     }
-  }, [user, hasEntered]);
+  }, [user, loading, isInitializing, hasEntered]);
 
   const handleToggleChatPiP = () => {
     setIsChatPiP(!isChatPiP);
@@ -170,8 +176,8 @@ export default function App() {
   };
 
   // RENDERIZAÇÃO NÃO-BLOQUEANTE:
-  // Se não entrou ou não tem usuário, Landing Page é soberana.
-  if (!hasEntered || (!user && !isInitializing)) {
+  // Se não entrou ou não tem usuário e não estamos carregando/inicializando, Landing Page é soberana.
+  if (!hasEntered || (!user && !isInitializing && !loading)) {
     return (
       <>
         <LandingPage 
@@ -199,6 +205,7 @@ export default function App() {
   return (
     <ProtectedRoute 
       user={user} 
+      loading={loading}
       isInitializing={isInitializing} 
       onEnter={() => setHasEntered(false)}
     >

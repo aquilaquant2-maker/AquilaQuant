@@ -65,6 +65,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (session?.user) {
+        // Se temos sessão mas ainda estamos carregando o perfil, garante que o estado reflita isso
+        if (isMounted) {
+          setAuthState(prev => ({ ...prev, loading: true }));
+        }
+
         const isFounder = session.user.email?.toLowerCase() === 'aquilaquant2@gmail.com';
         
         try {
