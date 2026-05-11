@@ -469,7 +469,7 @@ export const AdminView = ({ currentView, onViewChange }: AdminViewProps) => {
     try {
       setIsUpdating(true);
       await updateClientTags(selectedClient.id, tags);
-      setIsAccessModalOpen(false);
+      // Mantemos o modal aberto para permitir múltiplas seleções
     } catch (err) {
       alert("Erro ao atualizar tags");
     } finally {
@@ -544,13 +544,14 @@ export const AdminView = ({ currentView, onViewChange }: AdminViewProps) => {
 
               <div className="space-y-4 mb-8">
                 {['B3', 'Forex', 'Cripto', 'All_Access'].map(tag => {
-                  const currentClient = clients.find(c => c.id === selectedClient.id) || selectedClient;
-                  const hasTag = currentClient.access_tags?.includes(tag);
+                  const currentClientInList = clients.find(c => c.id === selectedClient.id);
+                  const currentTags = currentClientInList?.access_tags || selectedClient.access_tags || [];
+                  const hasTag = currentTags.includes(tag);
+                  
                   return (
                     <button
                       key={tag}
                       onClick={() => {
-                        const currentTags = currentClient.access_tags || [];
                         const newTags = hasTag 
                           ? currentTags.filter((t: string) => t !== tag)
                           : [...currentTags, tag];
@@ -564,8 +565,21 @@ export const AdminView = ({ currentView, onViewChange }: AdminViewProps) => {
                           : "bg-white/5 border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"
                       )}
                     >
-                      <span className="text-[10px] font-black uppercase tracking-[0.2em]">{tag}</span>
-                      {hasTag ? <CheckCircle2 className="w-4 h-4" /> : <div className="w-4 h-4 rounded-full border border-white/20 group-hover:border-white/40" />}
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "w-2 h-2 rounded-full transition-all",
+                          hasTag ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.5)]" : "bg-zinc-800"
+                        )} />
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">{tag.replace('_', ' ')}</span>
+                      </div>
+                      
+                      {isUpdating && hasTag ? (
+                        <Loader2 className="w-4 h-4 animate-spin opacity-50" />
+                      ) : hasTag ? (
+                        <CheckCircle2 className="w-4 h-4" />
+                      ) : (
+                        <div className="w-4 h-4 rounded-full border border-white/20 group-hover:border-white/40" />
+                      )}
                     </button>
                   );
                 })}

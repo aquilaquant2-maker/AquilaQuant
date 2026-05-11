@@ -89,6 +89,10 @@ export function useAdminClients() {
   };
 
   const updateClientTags = async (userId: string, tags: string[]) => {
+    // Optimistic Update
+    const prevClients = [...clients];
+    setClients(prev => prev.map(c => c.id === userId ? { ...c, access_tags: tags } : c));
+
     try {
       const { error } = await supabase
         .from('profiles')
@@ -101,6 +105,7 @@ export function useAdminClients() {
       if (error) throw error;
     } catch (err: any) {
       console.error('AQUILA QUANT [Admin Hook]: Erro ao atualizar tags:', err.message);
+      setClients(prevClients); // Rollback
       throw err;
     }
   };
