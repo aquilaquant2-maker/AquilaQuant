@@ -240,10 +240,10 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <button 
-                onClick={onStart}
+                onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
                 className="w-full sm:w-auto px-10 py-5 bg-trading-green text-black rounded-2xl font-black uppercase text-sm tracking-[0.2em] shadow-2xl shadow-trading-green/40 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
               >
-                {user ? 'Acessar Dashboard' : 'Começar agora'} <ArrowRight className="w-5 h-5" />
+                {user ? 'Ver Planos' : 'Começar agora'} <ArrowRight className="w-5 h-5" />
               </button>
             </div>
 
@@ -683,7 +683,7 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
                   {isPurchasing === plan.priceId ? (
                     <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    'Teste 7 Dias Grátis'
+                    'Teste 30 Dias Grátis'
                   )}
                 </button>
                 <p className="text-[8px] text-zinc-600 font-bold text-center mt-4 uppercase tracking-widest">Cancelamento a qualquer momento</p>

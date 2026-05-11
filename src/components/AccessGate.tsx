@@ -75,7 +75,7 @@ export const AccessGate: React.FC<AccessGateProps> = ({ children, requiredTag })
               Pagamento Seguro
             </div>
             <div className="w-1 h-1 bg-zinc-800 rounded-full" />
-            <div>Garantia 7 Dias</div>
+            <div>Garantia 30 Dias</div>
           </div>
         </motion.div>
       </div>
