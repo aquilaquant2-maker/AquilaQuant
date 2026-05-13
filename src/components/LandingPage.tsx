@@ -766,7 +766,7 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
 
       {/* WhatsApp Fixed Button */}
       <a 
-        href="https://wa.me/5500000000000" 
+        href="https://chat.whatsapp.com/EutilkQ6bJK3r8DQFzHvI6?mode=gi_t" 
         target="_blank" 
         rel="noopener noreferrer"
         className="fixed bottom-8 right-8 z-50 group"

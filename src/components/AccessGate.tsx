@@ -8,6 +8,13 @@ interface AccessGateProps {
   requiredTag: 'B3' | 'Forex' | 'Cripto' | 'All_Access';
 }
 
+const CHECKOUT_LINKS = {
+  'B3': 'https://buy.stripe.com/bJe7sL02C0Qvfjy4Fp8Vi02',
+  'Forex': 'https://buy.stripe.com/00wcN59DcfLp1sI5Jt8Vi01',
+  'All_Access': 'https://buy.stripe.com/fZu7sL02C42H0oE9ZJ8Vi00?prefilled_promo_code=PROMO30',
+  'Cripto': 'https://buy.stripe.com/fZu7sL02C42H0oE9ZJ8Vi00?prefilled_promo_code=PROMO30' // Cripto por enquanto no Elite
+};
+
 export const AccessGate: React.FC<AccessGateProps> = ({ children, requiredTag }) => {
   const { hasAccess, loading, user } = useAuth();
 
@@ -59,13 +66,19 @@ export const AccessGate: React.FC<AccessGateProps> = ({ children, requiredTag })
           </p>
 
           <div className="space-y-3">
-            <button className="w-full h-14 bg-trading-green text-black font-black uppercase tracking-widest rounded-xl hover:shadow-[0_0_30px_rgba(0,186,114,0.4)] transition-all flex items-center justify-center gap-2 group">
+            <button 
+              onClick={() => {
+                const link = CHECKOUT_LINKS[requiredTag];
+                if (link) {
+                  const url = new URL(link);
+                  if (user?.email) url.searchParams.set('prefilled_email', user.email);
+                  window.open(url.toString(), '_blank');
+                }
+              }}
+              className="w-full h-14 bg-trading-green text-black font-black uppercase tracking-widest rounded-xl hover:shadow-[0_0_30px_rgba(0,186,114,0.4)] transition-all flex items-center justify-center gap-2 group"
+            >
               Fazer Upgrade Agora
               <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
-            
-            <button className="w-full h-12 bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-widest rounded-xl border border-white/5 transition-all">
-              Ver Planos Disponíveis
             </button>
           </div>
 

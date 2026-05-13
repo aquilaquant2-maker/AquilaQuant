@@ -166,7 +166,9 @@ export default function App() {
         const asset = SUPPORTED_ASSETS.find(a => a.view === currentView);
         if (asset) {
           return (
-            <AccessGate requiredTag={asset.type}>
+            <AccessGate 
+              requiredTag={asset.type}
+            >
               <TradingDashboard 
                 assetName={asset.name} 
                 assetCode={asset.symbol} 

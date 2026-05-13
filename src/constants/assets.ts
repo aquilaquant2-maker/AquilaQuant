@@ -26,7 +26,7 @@ export const SUPPORTED_ASSETS: Asset[] = [
   },
   { 
     symbol: 'XAU/USD', 
-    name: 'OURO (XAU/USD)', 
+    name: 'XAU/USD', 
     nameFull: 'XAU to USD',
     type: 'Forex', 
     view: 'XAU_USD',
@@ -34,7 +34,7 @@ export const SUPPORTED_ASSETS: Asset[] = [
   },
   { 
     symbol: 'EUR/USD', 
-    name: 'EURO (EUR/USD)', 
+    name: 'EUR/USD', 
     nameFull: 'EUR to USD',
     type: 'Forex', 
     view: 'EUR_USD',
