@@ -87,7 +87,7 @@ export default function App() {
     // Detectar retorno de sucesso da Stripe
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('success') === 'true') {
-      console.log('💰 Evento de Purchase detectado!');
+      console.log('💰 Evento de Purchase detectado! Disparando Pixel...');
       trackPurchase(0, 'BRL'); // Valor dinâmico pode ser implementado se necessário
       setIsSuccessView(true);
       // Limpar parâmetros da URL após detectar

@@ -46,18 +46,27 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
       
       // Rastrear inicio de checkout no Facebook
       trackInitiateCheckout();
+      console.log('🎯 Pixel: InitiateCheckout disparado.');
       
-      // Se houver um link direto fornecido (Payment Link), usamos ele como fallback ou primário
-      // para evitar erros de 404 em ambientes sem backend (como Netlify)
-      if (directLink) {
-        // Adiciona prefilled_email se o usuário estiver logado
-        const url = new URL(directLink);
-        if (user?.email) {
-          url.searchParams.set('prefilled_email', user.email);
+      // Pequeno delay para garantir o disparo do pixel antes do redirecionamento
+      setTimeout(() => {
+        // Se houver um link direto fornecido (Payment Link), usamos ele como fallback ou primário
+        if (directLink) {
+          try {
+            const url = new URL(directLink);
+            if (user?.email) {
+              url.searchParams.set('prefilled_email', user.email);
+            }
+            window.location.href = url.toString();
+          } catch (e) {
+            window.location.href = directLink;
+          }
+          return;
         }
-        window.location.href = url.toString();
-        return;
-      }
+      }, 500);
+
+      // Aguarda o timeout apenas se tiver directLink, senão continua para a lógica de Edge Function
+      if (directLink) return;
 
       // Tenta usar a Supabase Edge Function se as chaves estiverem configuradas
       const apiEndpoint = import.meta.env.VITE_SUPABASE_URL 
