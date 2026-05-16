@@ -696,7 +696,7 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
                   {isPurchasing === plan.priceId ? (
                     <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    'Teste 30 Dias Grátis'
+                    'Teste 7 Dias Grátis'
                   )}
                 </button>
                 <p className="text-[8px] text-zinc-600 font-bold text-center mt-4 uppercase tracking-widest">Cancelamento a qualquer momento</p>
