@@ -14,13 +14,16 @@ import { PerformanceView } from './components/Performance';
 import { TradingDashboard } from './components/TradingDashboard';
 import { LandingPage } from './components/LandingPage';
 import { AdminView } from './components/AdminView';
+import { ChangelogView } from './components/ChangelogView';
 import { HomeDashboardWidgets } from './components/HomeDashboardWidgets';
 import { AuthModal } from './components/AuthModal';
 import { AccessGate } from './components/AccessGate';
 import { SetPasswordModal } from './components/SetPasswordModal';
+import { SuccessPage } from './components/SuccessPage';
 import { SUPPORTED_ASSETS } from './constants/assets';
 import { Bitcoin, Cpu, Zap, ChevronDown, Shield, Lock, Loader2 } from 'lucide-react';
 import { checkSupabaseConnection, supabase } from './lib/supabaseClient';
+import { initPixel, trackPageView, trackPurchase } from './lib/pixel';
 import { useAuth } from './hooks/useAuth';
 
 const btcData = [{value: 40}, {value: 35}, {value: 55}, {value: 45}, {value: 70}, {value: 60}, {value: 90}];
@@ -63,6 +66,7 @@ export default function App() {
   const [isChatPiP, setIsChatPiP] = useState(false);
   const [isChatActive, setIsChatActive] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isSuccessView, setIsSuccessView] = useState(false);
   const [hasEntered, setHasEntered] = useState(false);
   const isFirstLoad = React.useRef(true);
   
@@ -72,6 +76,23 @@ export default function App() {
   const { user, loading, isAdmin, isInitializing } = useAuth();
   
   useEffect(() => {
+    // Inicializar Facebook Pixel
+    initPixel();
+    trackPageView();
+    
+    // Detectar retorno de sucesso da Stripe
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success') === 'true') {
+      console.log('💰 Evento de Purchase detectado!');
+      trackPurchase(0, 'BRL'); // Valor dinâmico pode ser implementado se necessário
+      setIsSuccessView(true);
+      // Limpar parâmetros da URL após detectar
+      try {
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+      } catch (e) {}
+    }
+
     // Interceptor para convites e recuperação de senha (Silent Onboarding)
     const hash = window.location.hash;
     const isSpecialFlow = hash && (hash.includes('type=invite') || hash.includes('type=recovery') || hash.includes('access_token='));
@@ -138,6 +159,10 @@ export default function App() {
     }
   }, [user, loading, isInitializing, hasEntered]);
 
+  useEffect(() => {
+    trackPageView();
+  }, [currentView]);
+
   const handleToggleChatPiP = () => {
     setIsChatPiP(!isChatPiP);
     if (!isChatActive) setIsChatActive(true);
@@ -152,9 +177,11 @@ export default function App() {
       case 'LEADERBOARD': return <Leaderboard />;
       case 'STUDY': return <ArticlesStudy />;
       case 'CHAT': return <LiveChat isPiP={false} onTogglePiP={() => {}} />;
+      case 'CHANGELOG': return <ChangelogView />;
       case 'ADMIN': 
       case 'ADMIN_CLIENTS':
       case 'ADMIN_PAIRS':
+      case 'ADMIN_CHANGELOG':
         if (!isAdmin) {
           setCurrentView('DASHBOARD');
           return <HomeDashboardWidgets />;
@@ -181,7 +208,12 @@ export default function App() {
     }
   };
 
-  // RENDERIZAÇÃO NÃO-BLOQUEANTE:
+  // Renderização NÃO-BLOQUEANTE:
+  // Se estivermos na visão de sucesso pós-pagamento
+  if (isSuccessView) {
+    return <SuccessPage onReturn={() => setIsSuccessView(false)} />;
+  }
+
   // Se não entrou ou não tem usuário e não estamos carregando/inicializando, Landing Page é soberana.
   if (!hasEntered || (!user && !isInitializing && !loading)) {
     return (

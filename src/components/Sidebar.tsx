@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { supabase } from '../lib/supabaseClient';
 import { authService } from '../lib/authService';
 import { User } from '@supabase/supabase-js';
 import { SUPPORTED_ASSETS, CATEGORIES } from '../constants/assets';
@@ -51,6 +52,39 @@ export const Sidebar = ({
     forex: true,
     admin: currentView.startsWith('ADMIN'),
   });
+  const [hasNewUpdates, setHasNewUpdates] = useState(false);
+
+  React.useEffect(() => {
+    const checkUpdates = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('changelog')
+          .select('created_at')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          const latest = data[0].created_at;
+          const lastSeen = localStorage.getItem('lastSeenChangelog');
+          
+          if (!lastSeen || new Date(latest) > new Date(lastSeen)) {
+            setHasNewUpdates(true);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao verificar atualizações:', error);
+      }
+    };
+
+    checkUpdates();
+    
+    // Listener para limpar o badge quando o usuário visualiza a timeline
+    const handleSeen = () => setHasNewUpdates(false);
+    window.addEventListener('changelogSeen', handleSeen);
+    return () => window.removeEventListener('changelogSeen', handleSeen);
+  }, []);
 
   const toggleMenu = (menu: string) => {
     setExpandedMenus(prev => ({ ...prev, [menu]: !prev[menu] }));
@@ -163,68 +197,88 @@ export const Sidebar = ({
       <nav className="flex-1 space-y-4 mb-8">
         {/* Dashboards Menu */}
         <div className="space-y-1">
-          <button
-            onClick={() => {
-              if (currentView !== 'DASHBOARD' && currentView !== 'B3') onViewChange('DASHBOARD');
-              toggleMenu('dashboards');
-            }}
-            className={cn(
-              "flex items-center justify-between w-full px-4 py-3 rounded-xl transition-all duration-200 group text-sm font-semibold tracking-tight",
-              expandedMenus.dashboards ? "bg-white/5 text-white" : "text-zinc-500 hover:text-white hover:bg-white/5"
-            )}
-          >
-            <div className="flex items-center gap-3">
-              <LayoutDashboard className={cn("w-5 h-5", expandedMenus.dashboards ? "text-trading-green" : "text-zinc-500 group-hover:text-zinc-300")} />
-              <span>Dashboards</span>
-            </div>
-            <ChevronDown className={cn("w-4 h-4 transition-transform duration-300", expandedMenus.dashboards ? "rotate-180" : "")} />
-          </button>
-          
-          <AnimatePresence>
-            {expandedMenus.dashboards && (
-              <motion.div 
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden pl-4 space-y-1 mt-1"
-              >
-                {/* Dynamic Asset Submenus */}
-                {CATEGORIES.map(category => (
-                  <div key={category} className="space-y-1">
-                    <button 
-                      onClick={() => toggleMenu(category.toLowerCase())}
-                      className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors group"
-                    >
-                      <div className="flex items-center gap-3">
-                        {category === 'B3' ? <Monitor className="w-4 h-4" /> : <Globe className="w-4 h-4" />}
-                        <span>{category}</span>
-                      </div>
-                      <ChevronRight className={cn("w-3.5 h-3.5 transition-transform", expandedMenus[category.toLowerCase()] ? "rotate-90" : "")} />
-                    </button>
-                    {expandedMenus[category.toLowerCase()] && (
-                      <div className="pl-8 space-y-1 py-1">
-                        {SUPPORTED_ASSETS.filter(a => a.type === category).map(asset => (
-                          <button 
-                            key={asset.view}
-                            onClick={() => onViewChange(asset.view)}
-                            className={cn(
-                              "flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors",
-                              currentView === asset.view ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-trading-green hover:bg-white/5"
-                            )}
-                          >
-                            <div className={cn("w-1 h-1 rounded-full", currentView === asset.view ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
-                            {asset.name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
+            <button
+              onClick={() => {
+                if (currentView !== 'DASHBOARD' && currentView !== 'B3') onViewChange('DASHBOARD');
+                toggleMenu('dashboards');
+              }}
+              className={cn(
+                "flex items-center justify-between w-full px-4 py-3 rounded-xl transition-all duration-200 group text-sm font-semibold tracking-tight",
+                expandedMenus.dashboards ? "bg-white/5 text-white" : "text-zinc-500 hover:text-white hover:bg-white/5"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <LayoutDashboard className={cn("w-5 h-5", expandedMenus.dashboards ? "text-trading-green" : "text-zinc-500 group-hover:text-zinc-300")} />
+                <span>Dashboards</span>
+              </div>
+              <ChevronDown className={cn("w-4 h-4 transition-transform duration-300", expandedMenus.dashboards ? "rotate-180" : "")} />
+            </button>
+            
+            <AnimatePresence>
+              {expandedMenus.dashboards && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden pl-4 space-y-1 mt-1"
+                >
+                  {/* Dynamic Asset Submenus */}
+                  {CATEGORIES.map(category => (
+                    <div key={category} className="space-y-1">
+                      <button 
+                        onClick={() => toggleMenu(category.toLowerCase())}
+                        className="flex items-center justify-between w-full px-4 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors group"
+                      >
+                        <div className="flex items-center gap-3">
+                          {category === 'B3' ? <Monitor className="w-4 h-4" /> : <Globe className="w-4 h-4" />}
+                          <span>{category}</span>
+                        </div>
+                        <ChevronRight className={cn("w-3.5 h-3.5 transition-transform", expandedMenus[category.toLowerCase()] ? "rotate-90" : "")} />
+                      </button>
+                      {expandedMenus[category.toLowerCase()] && (
+                        <div className="pl-8 space-y-1 py-1">
+                          {SUPPORTED_ASSETS.filter(a => a.type === category).map(asset => (
+                            <button 
+                              key={asset.view}
+                              onClick={() => onViewChange(asset.view)}
+                              className={cn(
+                                "flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-[11px] font-bold transition-colors",
+                                currentView === asset.view ? "text-trading-green bg-white/5" : "text-zinc-500 hover:text-trading-green hover:bg-white/5"
+                              )}
+                            >
+                              <div className={cn("w-1 h-1 rounded-full", currentView === asset.view ? "bg-trading-green shadow-[0_0_8px_rgba(0,255,157,0.6)]" : "bg-current")} />
+                              {asset.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
 
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+                  {/* Public Updates Link */}
+                  <button 
+                    onClick={() => onViewChange('CHANGELOG')}
+                    className={cn(
+                      "flex items-center justify-between w-full px-4 py-2 rounded-lg text-xs font-bold transition-all mt-2 group relative",
+                      currentView === 'CHANGELOG' ? "text-white bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <MessageSquare className="w-4 h-4" />
+                      <span>Atualizações</span>
+                    </div>
+                    {hasNewUpdates && (
+                      <span className="flex h-1.5 w-1.5 items-center justify-center">
+                        <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-trading-green opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-trading-green shadow-[0_0_10px_#00ff9d]"></span>
+                      </span>
+                    )}
+                  </button>
+
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
         {/* Administrador */}
         {isAdmin && (
@@ -279,6 +333,18 @@ export const Sidebar = ({
                   >
                     <BarChart3 className="w-4 h-4" />
                     <span>Pares</span>
+                  </button>
+
+                  {/* Atualizações */}
+                  <button 
+                    onClick={() => onViewChange('ADMIN_CHANGELOG')}
+                    className={cn(
+                      "flex items-center gap-3 w-full px-4 py-2 rounded-lg text-xs font-bold transition-all",
+                      currentView === 'ADMIN_CHANGELOG' ? "text-white bg-white/5" : "text-zinc-500 hover:text-white hover:bg-white/5"
+                    )}
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Atualizações</span>
                   </button>
                 </motion.div>
               )}

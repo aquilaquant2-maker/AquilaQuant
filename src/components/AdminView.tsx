@@ -17,7 +17,8 @@ import {
   History,
   BarChart3,
   Save,
-  Activity
+  Activity,
+  Plus
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { uploadAssetMetrics, saveManualAssetMetrics, getAllAssetMetrics } from '../lib/quantEngine';
@@ -25,6 +26,8 @@ import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../hooks/useAuth';
 import { useAdminClients } from '../hooks/useAdminClients';
 import { SUPPORTED_ASSETS } from '../constants/assets';
+import { ChangelogAdminPanel } from './ChangelogAdminPanel';
+import { ChangelogPost } from '../types/changelog';
 
 interface AdminViewProps {
   currentView: string;
@@ -45,16 +48,74 @@ export const AdminView = ({ currentView, onViewChange }: AdminViewProps) => {
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [isChangelogModalOpen, setIsChangelogModalOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [savingPair, setSavingPair] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'CLIENTS' | 'PAIRS'>(
+  const [activeTab, setActiveTab] = useState<'CLIENTS' | 'PAIRS' | 'CHANGELOG'>(
+    currentView === 'ADMIN_CHANGELOG' ? 'CHANGELOG' : 
     currentView === 'ADMIN_PAIRS' ? 'PAIRS' : 'CLIENTS'
   );
 
   React.useEffect(() => {
+    if (currentView === 'ADMIN_CHANGELOG') setActiveTab('CHANGELOG');
     if (currentView === 'ADMIN_PAIRS') setActiveTab('PAIRS');
     if (currentView === 'ADMIN_CLIENTS') setActiveTab('CLIENTS');
   }, [currentView]);
+
+  // CHANGELOG STATE
+  const [changelogs, setChangelogs] = useState<ChangelogPost[]>([]);
+  const [loadingChangelog, setLoadingChangelog] = useState(false);
+
+  React.useEffect(() => {
+    if (activeTab === 'CHANGELOG') {
+      fetchChangelogs();
+    }
+  }, [activeTab]);
+
+  const fetchChangelogs = async () => {
+    setLoadingChangelog(true);
+    try {
+      const { data, error } = await supabase
+        .from('changelog')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setChangelogs(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar changelogs:', error);
+    } finally {
+      setLoadingChangelog(false);
+    }
+  };
+
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const deleteChangelog = async (id: string) => {
+    if (deletingId) return;
+    setDeletingId(id);
+    
+    try {
+      console.log('Tentando excluir changelog:', id);
+      const { error } = await supabase
+        .from('changelog')
+        .delete()
+        .eq('id', id);
+      
+      if (error) {
+        console.error('Erro Supabase ao excluir:', error);
+        throw error;
+      }
+      
+      console.log('Changelog excluído com sucesso');
+      setChangelogs(prev => prev.filter(c => c.id !== id));
+    } catch (error: any) {
+      console.error('Erro na função deleteChangelog:', error);
+      alert(`Erro ao excluir: ${error.message || 'Erro desconhecido'}`);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   // PAIRS ENGINE
   const [assetMetrics, setAssetMetrics] = useState<any[]>([]);
@@ -477,6 +538,103 @@ export const AdminView = ({ currentView, onViewChange }: AdminViewProps) => {
     }
   };
 
+  const renderChangelog = () => {
+    return (
+      <div className="p-8 max-w-6xl mx-auto w-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-white/5">
+           <div>
+              <h2 className="text-3xl font-black uppercase tracking-tighter text-white font-sans">Atualizações</h2>
+              <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest mt-2">Comunicados e Release Notes</p>
+           </div>
+           
+           <button 
+             onClick={() => setIsChangelogModalOpen(true)}
+             className="px-6 py-3 bg-trading-green text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all flex items-center gap-2 shadow-[0_0_20px_rgba(0,255,157,0.2)]"
+           >
+             <Plus className="w-4 h-4" />
+             Nova Atualização
+           </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {loadingChangelog ? (
+            <div className="col-span-full flex flex-col items-center justify-center py-20 bg-white/[0.01] border border-white/5 rounded-3xl">
+              <Loader2 className="w-10 h-10 text-trading-green animate-spin mb-4" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-zinc-600 font-sans">Carregando Histórico...</p>
+            </div>
+          ) : changelogs.length === 0 ? (
+            <div className="col-span-full flex flex-col items-center justify-center py-20 bg-white/[0.01] border border-white/5 rounded-3xl">
+              <History className="w-10 h-10 text-zinc-700 mb-4" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-zinc-600 font-sans">Nenhuma atualização publicada ainda</p>
+            </div>
+          ) : (
+            changelogs.map(post => (
+              <motion.div 
+                key={post.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="group relative bg-[#0a0a0c] border border-white/5 rounded-2xl overflow-hidden hover:border-trading-green/30 transition-all duration-500"
+              >
+                {post.image_url && (
+                  <div className="aspect-video w-full overflow-hidden border-b border-white/5">
+                    <img src={post.image_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                  </div>
+                )}
+                <div className="p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="px-2 py-0.5 bg-trading-green/10 border border-trading-green/20 rounded text-[8px] font-black text-trading-green uppercase tracking-widest">
+                      {post.category}
+                    </span>
+                    <span className="text-[9px] text-zinc-600 font-bold uppercase">
+                      {new Date(post.created_at).toLocaleDateString('pt-BR')}
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-black text-white uppercase tracking-tight mb-2 truncate group-hover:text-trading-green transition-colors">{post.title}</h3>
+                  <p className="text-[11px] text-zinc-500 line-clamp-2 mb-6 font-medium leading-relaxed">{post.content}</p>
+                  
+                  <div className="flex items-center justify-end pt-4 border-t border-white/5">
+                    <button 
+                      onClick={() => deleteChangelog(post.id)}
+                      disabled={deletingId === post.id}
+                      className={cn(
+                        "p-2 rounded-lg transition-all",
+                        deletingId === post.id 
+                          ? "bg-white/5 text-zinc-500 cursor-wait" 
+                          : "text-zinc-700 hover:text-red-500 hover:bg-red-500/10"
+                      )}
+                    >
+                      {deletingId === post.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            ))
+          )}
+        </div>
+
+        {isChangelogModalOpen && (
+          <ChangelogAdminPanel 
+            onClose={() => setIsChangelogModalOpen(false)}
+            onSuccess={fetchChangelogs}
+          />
+        )}
+      </div>
+    );
+  };
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'CLIENTS': return renderClients();
+      case 'PAIRS': return renderPairs();
+      case 'CHANGELOG': return renderChangelog();
+      default: return renderClients();
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[#050507]">
       {/* Top Admin Navigation */}
@@ -506,13 +664,23 @@ export const AdminView = ({ currentView, onViewChange }: AdminViewProps) => {
               <motion.div layoutId="adminTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-trading-green shadow-[0_0_15px_rgba(0,255,157,0.5)]" />
             )}
           </button>
+          <button 
+            onClick={() => { setActiveTab('CHANGELOG'); onViewChange('ADMIN_CHANGELOG'); }}
+            className={cn(
+              "px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] relative transition-all",
+              activeTab === 'CHANGELOG' ? "text-trading-green" : "text-zinc-500 hover:text-zinc-300"
+            )}
+          >
+            Atualizações
+            {activeTab === 'CHANGELOG' && (
+              <motion.div layoutId="adminTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-trading-green shadow-[0_0_15px_rgba(0,255,157,0.5)]" />
+            )}
+          </button>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto scrollbar-hide">
-        {
-          activeTab === 'CLIENTS' ? renderClients() : renderPairs()
-        }
+        {renderContent()}
       </div>
 
       {/* MODAL: CONFIGURAÇÃO DE ACESSOS */}

@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import { trackInitiateCheckout } from '../lib/pixel';
 
 export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any }) => {
   const [activeFaq, setActiveFaq] = React.useState<number | null>(null);
@@ -42,6 +43,9 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
   const handlePurchase = async (priceId: string, directLink?: string) => {
     try {
       setIsPurchasing(priceId);
+      
+      // Rastrear inicio de checkout no Facebook
+      trackInitiateCheckout();
       
       // Se houver um link direto fornecido (Payment Link), usamos ele como fallback ou primário
       // para evitar erros de 404 em ambientes sem backend (como Netlify)
