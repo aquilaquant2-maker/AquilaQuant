@@ -30,11 +30,91 @@ import {
   MessageCircle,
   Calendar,
   Layout,
-  RefreshCcw
+  RefreshCcw,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { trackInitiateCheckout } from '../lib/pixel';
+
+const FAKE_PURCHASES = [
+  { name: 'Ricardo S.', city: 'São Paulo, SP', plan: 'Elite Anual' },
+  { name: 'Ana Beatriz L.', city: 'Curitiba, PR', plan: 'Elite Mensal' },
+  { name: 'Marcos Oliveira', city: 'Belo Horizonte, MG', plan: 'Elite Anual' },
+  { name: 'felipe_trader', city: 'Rio de Janeiro, RJ', plan: 'Elite Mensal' },
+  { name: 'Gabriel M.', city: 'Florianópolis, SC', plan: 'Elite Anual' },
+  { name: 'Lucas H.', city: 'Brasília, DF', plan: 'Elite Mensal' },
+  { name: 'Juliana P.', city: 'Porto Alegre, RS', plan: 'Elite Anual' },
+  { name: 'Trader_X', city: 'Salvador, BA', plan: 'Elite Mensal' },
+];
+
+const PurchaseNotification = () => {
+  const [current, setCurrent] = React.useState<typeof FAKE_PURCHASES[0] | null>(null);
+  const [isVisible, setIsVisible] = React.useState(false);
+
+  React.useEffect(() => {
+    const showNotification = () => {
+      const random = FAKE_PURCHASES[Math.floor(Math.random() * FAKE_PURCHASES.length)];
+      setCurrent(random);
+      setIsVisible(true);
+
+      // Esconde depois de 5 segundos
+      setTimeout(() => {
+        setIsVisible(false);
+      }, 5000);
+    };
+
+    // Primeira notificação após 10 segundos
+    const initialTimeout = setTimeout(showNotification, 10000);
+
+    // Ciclo repetitivo entre 15 e 30 segundos
+    const interval = setInterval(() => {
+      showNotification();
+    }, 25000 + Math.random() * 10000);
+
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(interval);
+    };
+  }, []);
+
+  return (
+    <AnimatePresence>
+      {isVisible && current && (
+        <motion.div
+           initial={{ opacity: 0, x: -50, scale: 0.9 }}
+           animate={{ opacity: 1, x: 0, scale: 1 }}
+           exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.2 } }}
+           className="fixed bottom-6 left-6 z-[100] flex items-center gap-4 bg-[#0a0a0c]/90 backdrop-blur-md border border-white/10 p-4 rounded-2xl shadow-2xl max-w-[280px]"
+        >
+          <div className="relative">
+            <div className="w-12 h-12 rounded-full bg-trading-green/20 border border-trading-green/30 flex items-center justify-center">
+              <Zap className="w-6 h-6 text-trading-green" />
+            </div>
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-trading-green rounded-full border-2 border-[#0a0a0c] animate-pulse" />
+          </div>
+          
+          <div className="flex-1">
+            <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-0.5">Nova Assinatura</p>
+            <h4 className="text-xs font-black text-white uppercase tracking-tight">
+              {current.name} <span className="text-trading-green">registrou-se</span>
+            </h4>
+            <p className="text-[9px] text-zinc-400 font-medium">
+              de {current.city} • <span className="text-zinc-600">agora mesmo</span>
+            </p>
+          </div>
+
+          <button 
+            onClick={() => setIsVisible(false)}
+            className="text-zinc-700 hover:text-white transition-colors"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
 
 export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any }) => {
   const [activeFaq, setActiveFaq] = React.useState<number | null>(null);
@@ -140,6 +220,7 @@ export const LandingPage = ({ onStart, user }: { onStart: () => void, user: any 
 
   return (
     <div className="min-h-screen bg-[#050507] text-white font-sans overflow-x-hidden selection:bg-trading-green/30">
+      <PurchaseNotification />
       {/* Promo Banner */}
       <div className="bg-[#050507] border-b border-trading-green/20 py-2 md:py-2.5 px-4 md:px-6 relative z-50">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-1.5 md:gap-2 text-[9px] md:text-xs font-black uppercase tracking-widest text-zinc-300 text-center">
