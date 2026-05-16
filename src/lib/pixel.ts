@@ -3,11 +3,20 @@ import ReactPixel from 'react-facebook-pixel';
 const PIXEL_ID = import.meta.env.VITE_FB_PIXEL_ID;
 
 export const initPixel = () => {
-  if (typeof window !== 'undefined' && PIXEL_ID) {
-    ReactPixel.init(PIXEL_ID, undefined, {
+  if (typeof window !== 'undefined') {
+    if (!PIXEL_ID) {
+      console.warn('⚠️ FB_PIXEL_ID não encontrado nas variáveis de ambiente (VITE_FB_PIXEL_ID).');
+      return;
+    }
+
+    console.log(`🚀 Inicializando Facebook Pixel: ${PIXEL_ID}`);
+    
+    const options = {
       autoConfig: true,
       debug: false,
-    });
+    };
+
+    ReactPixel.init(PIXEL_ID, undefined, options);
   }
 };
 

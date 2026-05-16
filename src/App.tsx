@@ -78,7 +78,11 @@ export default function App() {
   useEffect(() => {
     // Inicializar Facebook Pixel
     initPixel();
-    trackPageView();
+    
+    // Pequeno delay para o primeiro trigger
+    setTimeout(() => {
+      trackPageView();
+    }, 300);
     
     // Detectar retorno de sucesso da Stripe
     const urlParams = new URLSearchParams(window.location.search);
